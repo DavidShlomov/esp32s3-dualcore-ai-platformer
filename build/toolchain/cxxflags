@@ -1,0 +1,6 @@
+"-specs=C:/Users/97250/Desktop/BareMetal/GameEngine/GameEngine/build/specs/picolibc.specs"
+-mlongcalls
+-fno-builtin-memcpy
+-fno-builtin-memset
+-fno-builtin-bzero
+-fno-rtti
