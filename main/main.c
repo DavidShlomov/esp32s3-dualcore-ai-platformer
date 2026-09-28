@@ -18,14 +18,14 @@ void app_main(void)
     dma_ready_sem = xSemaphoreCreateBinary();
     esp_lcd_panel_handle_t panel_handle = lcd_setup_main(on_color_trans_done);
     int y_start_pos = 0;
-    int move_rate = 3;
     int character_y_axis = CIRCLE_CHARACTER_INITIAL_Y;
     int map_index = 0;
     int map_offset = 0;
     int y_velocity = 0;
+    
     uint8_t *map_level;
-    Agent new_agent;
-
+    Agent *agent_generation = NULL;
+    Agent *champion_agent_array = NULL;//TODO: later add a champion array sized 10.
 
     xSemaphoreGive(dma_ready_sem);
     init_xorshift32();
@@ -35,23 +35,38 @@ void app_main(void)
     printf("ESP32-S3 Game Engine Initialized!\n");
 
     map_level = build_map();
-    // print_map_array(map_level);
 
-    init_agent(&new_agent);
-    new_agent.map = map_level;
-    simulate_agent(&new_agent);
+    agent_generation = allocate_agent_array(GENERATION_SIZE);
+    init_agent_array(agent_generation, GENERATION_SIZE);
+
+    simulate_agent_generation(agent_generation, map_level);
+
+    qsort(agent_generation, GENERATION_SIZE, sizeof(Agent), compare_fitness);
+
+
+    print_agent(&agent_generation[0]);
+    print_map_array(map_level);
+
+    natural_selection(agent_generation, map_level);
+    print_agent(&agent_generation[0]);
+
+
     // Infinite loop to keep the task alive
     while (1)
     {
         //game tiles are obst width for simplicity.
         map_index = camera_x / OBSTACLE_WIDTH;
         map_offset = camera_x % OBSTACLE_WIDTH;
-        camera_x += move_rate;
+        camera_x += MOVE_RATE;
 
         // Calculate where the character is in the global map
+        
         int character_global_x = camera_x + CIRCLE_CHARACTER_X_AXIS;
         int character_map_index = character_global_x / OBSTACLE_WIDTH;
-        bool is_dead = false;
+
+        if(character_map_index >= DNA_SIZE){
+            character_map_index = DNA_SIZE - 1;
+        }
 
         xSemaphoreTake(dma_ready_sem, portMAX_DELAY);
         fill_screen_black(back_buffer);
@@ -59,11 +74,11 @@ void app_main(void)
 
         draw_visible_obstacles(map_index, map_offset, y_start_pos, map_level, back_buffer);
 
-        update_jump_physics(&character_y_axis, &y_velocity, character_map_index, map_level);
+        agent_jump(&agent_generation[0], &y_velocity, character_map_index, &character_y_axis);
 
         draw_circle(back_buffer, CIRCLE_CHARACTER_X_AXIS, character_y_axis, CIRCLE_CHARACTER_RADIUS);
 
-        check_collision(character_global_x,character_y_axis, map_level, &is_dead);
+        check_collision(character_global_x,character_y_axis, map_level, &agent_generation[0].is_dead);
 
         temp_buffer = front_buffer;
         front_buffer = back_buffer;
@@ -71,7 +86,7 @@ void app_main(void)
 
         flush_screen_buffer(panel_handle, front_buffer);
 
-        check_game_over(map_index, &character_y_axis, is_dead, panel_handle);
+        check_game_over(map_index, &character_y_axis, &agent_generation[0].is_dead, &y_velocity , panel_handle);
 
     }
 }
@@ -187,8 +202,8 @@ IRAM_ATTR bool on_color_trans_done(esp_lcd_panel_io_handle_t panel_io, esp_lcd_p
 uint8_t *build_map()
 {
     uint8_t *map_array = calloc(MAP_SIZE, sizeof(uint8_t));
-    //starting with 12 empty cells
-    for (int i = 12; i < MAP_SIZE; i++)
+    //starting with 12 empty cells, at least 2 last tiles empty.
+    for (int i = NUM_OF_TILES_IN_SCREEN; i < MAP_SIZE - 2; i++)
     {
         if (random_num % 2 == 0)
         {
@@ -292,26 +307,6 @@ void draw_visible_obstacles(int map_index, int map_offset, int y_start_pos ,uint
         }
 }
 
-//all jumping logic.
-void update_jump_physics(int *character_y_axis, int *character_y_velocity, int character_map_index, uint8_t *curr_level){
-    int gravity = 1;
-
-    if (*character_y_axis == CIRCLE_CHARACTER_INITIAL_Y && curr_level[character_map_index + 1] != 0)
-    {
-        *character_y_velocity = HIGH;
-        printf("JUMP TRIGGERED! Obstacle at index %d\n", character_map_index + 1);
-    }
-
-    *character_y_velocity -= gravity;
-    *character_y_axis += *character_y_velocity;
-
-    if (*character_y_axis <= CIRCLE_CHARACTER_INITIAL_Y)
-    {
-        *character_y_axis = CIRCLE_CHARACTER_INITIAL_Y;
-        *character_y_velocity = 0;
-    }
-}
-
 void check_collision(int character_global_x, int character_y_axis, uint8_t *curr_level, bool *is_dead){
     // Calculate the global X of the character's right and left edges
     int char_right_edge = character_global_x + CIRCLE_CHARACTER_RADIUS;
@@ -344,20 +339,109 @@ void check_collision(int character_global_x, int character_y_axis, uint8_t *curr
 }
 
 
-void check_game_over(int map_index, int *character_y_axis, bool is_dead, esp_lcd_panel_handle_t panel_handle){
+void check_game_over(int map_index, int *character_y_axis, bool *is_dead, int *y_velocity , esp_lcd_panel_handle_t panel_handle){
 
     //maybe later add different screens for level finish and death.
-    if (map_index >= MAP_SIZE || is_dead)
+    if (map_index >= MAP_SIZE || *is_dead)
     {
         vTaskDelay(500 / portTICK_PERIOD_MS); // Give a half second to see the death
         show_level_end_screen(panel_handle);
         camera_x = 0;
         *character_y_axis = CIRCLE_CHARACTER_INITIAL_Y;
+        *is_dead = false;
+        *y_velocity = 0;
     }
 }
 
+//Agent jumping logic need to callibrate numbers later.
+void agent_jump(Agent *agent, int *y_velocity, int dna_array_index, int *agent_y_axis){
+    int gravity = 1;
 
-//initiate an agent with randon dna.
+    if(dna_array_index >= DNA_SIZE){
+        printf("dna_array_index is out of bound.\n");
+        return;
+    }
+    //Agent is currenly not mid jump. 
+    if(*y_velocity == 0 && *agent_y_axis == CIRCLE_CHARACTER_INITIAL_Y){
+        switch (agent->dna[dna_array_index])
+        {
+            case LOW:
+                *y_velocity = 16;
+                break;
+            case MEDIUM:
+                *y_velocity = 18;
+                break;
+            case HIGH:
+                *y_velocity = 20;
+                break;
+            default:
+                break;
+        }
+    }
+    //Physics
+    *y_velocity -= gravity;
+    *agent_y_axis += *y_velocity;
+    //Physics corretion
+    if(*agent_y_axis <= CIRCLE_CHARACTER_INITIAL_Y){
+        *y_velocity = 0;
+        *agent_y_axis = CIRCLE_CHARACTER_INITIAL_Y;
+    }
+}
+
+//Headless simulator for agent training without rendering to screen.
+//Supposed to run a single agent until it dies or passes. 
+void simulate_agent(Agent *agent, uint8_t *curr_level){
+    int character_y_axis = CIRCLE_CHARACTER_INITIAL_Y;
+    int y_velocity = 0;
+    int character_x = 0;
+    int character_map_index = 0;
+    bool above_obstacle = false;
+
+    xorshift32();
+
+    while (!(agent->is_dead) && character_map_index < MAP_SIZE)
+    {
+        //Game tiles are obstacle width.
+        character_map_index = character_x / OBSTACLE_WIDTH;
+
+        if(character_map_index >= MAP_SIZE){
+            break;
+        }
+        
+        calculate_fitness(&agent->fitness, character_y_axis, character_map_index, &above_obstacle, curr_level);
+
+        agent_jump(agent, &y_velocity, character_map_index, &character_y_axis);
+
+        check_collision(character_x,character_y_axis, curr_level, &agent->is_dead);
+        
+        character_x += MOVE_RATE;
+    }
+
+    agent->distance = character_map_index;
+}
+
+void calculate_fitness(int *fitness, int agent_y_axis, int map_index, bool *above_obstacle, uint8_t *curr_level){
+
+    //agent is above an obstacle.
+    if(agent_y_axis > CIRCLE_CHARACTER_INITIAL_Y && curr_level[map_index] > 0){
+        *above_obstacle = true;
+    }
+    //agent passed obstacle successfully.
+    if(*above_obstacle && agent_y_axis == CIRCLE_CHARACTER_INITIAL_Y){
+        *fitness += 100;
+        *above_obstacle = false;
+    }
+    //airtime fitmess is -1.
+    if(agent_y_axis > CIRCLE_CHARACTER_INITIAL_Y){
+        *fitness -= 1;
+    }
+    //last tile guranteed with no obstacle, map is passed.
+    if(map_index == MAP_SIZE - 1){
+        *fitness += 1000;
+    }
+}
+
+//initiate an agent with random dna.
 void init_agent(Agent *new_agent){
     new_agent->distance = 0;
     new_agent->fitness = 0;
@@ -381,81 +465,187 @@ void print_agent(Agent *agent){
     printf("Agent distance is: %d\n", agent->distance);
     printf("Agent dna is: \n");
     print_map_array(agent->dna);
-    printf("Agent map is: \n");
-    print_map_array(agent->map);
 }
 
-//Agent jumping logic need to callibrate numbers later.
-void agent_jump(Agent *agent, int *y_velocity, int dna_array_index, int *agent_y_axis){
-    int gravity = 1;
+Agent *allocate_agent_array(int array_size){
+    Agent *gen_zero = (Agent *) malloc(sizeof(Agent) * array_size);
 
-    if(dna_array_index >= DNA_SIZE){
-        printf("dna_array_index is out of bound.\n");
-        return;
+    if(gen_zero == NULL){
+        printf("Agent generation memory allocation failed.\n");
     }
-    //Agent is currenly not mid jump. 
-    if(*y_velocity == 0 && *agent_y_axis == CIRCLE_CHARACTER_INITIAL_Y){
-        switch (agent->dna[dna_array_index])
-        {
-            case LOW:
-                *y_velocity = 13;
-                break;
-            case MEDIUM:
-                *y_velocity = 18;
-                break;
-            case HIGH:
-                *y_velocity = 23;
-                break;
-            default:
-                break;
+    return gen_zero;
+}
+
+void init_agent_array(Agent *agent_generation, int array_size){
+
+    for(int i = 0; i < array_size; i++){
+        init_agent(&agent_generation[i]);
+    }
+}
+
+void print_agent_array(Agent *agent_generation, int array_size){
+    
+    for(int i = 0; i < array_size; i++){
+        printf("Agent %d:\n", i + 1);
+        print_agent(&agent_generation[i]);
+    }
+}
+
+Agent *allocate_champion_array(int array_size){
+    Agent *champion_array = (Agent *)calloc(array_size, sizeof(Agent));
+
+    if(champion_array == NULL){
+        printf("Could not allocate champion array");
+    }
+    return champion_array;
+}
+
+void simulate_agent_generation(Agent *agent_array, uint8_t *current_level){
+    for(int i = 0; i < GENERATION_SIZE; i++){
+        simulate_agent(&agent_array[i], current_level);
+    }
+}
+
+//Comparioson function for qsort.
+int compare_fitness(const void *agent_a, const void *agent_b){
+    return ((Agent *)agent_b)->fitness - ((Agent *)agent_a) -> fitness;
+}
+
+void natural_selection(Agent *agent_generation, uint8_t *map_level){
+    int generation_num = 0;
+    int best_distance = 0;
+    int local_optimum_check = 0;
+    int mutation_rate_percent = 1;
+    uint8_t *parent_a;
+    uint8_t *parent_b;
+    uint8_t *child_to_evolve;
+
+    //random number of generations will change later.
+    while(generation_num < NUM_OF_GENERATIONS){
+
+
+        if(generation_num % 100 == 0){
+            printf("Gen %d: best fitness = %d, best distance = %d\n", generation_num, agent_generation[0].fitness, agent_generation[0].distance);
+            //best_distance is not at local-optimum.
+            if(best_distance != agent_generation[0].distance){
+                best_distance = agent_generation[0].distance;
+                local_optimum_check = 0;
+                mutation_rate_percent = 1;   
+            }//best_distance is at local-optimum.
+            else{
+                local_optimum_check++;
+                //local_optimum is consistent - need to shake up with mutation percent increase. 
+                if(local_optimum_check >= 3){
+                    mutation_rate_percent += 2;
+                    if(mutation_rate_percent > 10){
+                        mutation_rate_percent = 10;
+                    }
+                    local_optimum_check = 0;
+                }
+            }
+        }
+
+        for(int i = GENERATION_SIZE/2; i < GENERATION_SIZE; i++){
+            xorshift32();
+            parent_a = agent_generation[random_num % (GENERATION_SIZE/2)].dna;
+            xorshift32();
+            parent_b = agent_generation[random_num % (GENERATION_SIZE/2)].dna;
+            child_to_evolve = agent_generation[i].dna;
+
+            double_cross_over(parent_a, parent_b, child_to_evolve);
+            mutation(child_to_evolve, mutation_rate_percent);
+        }
+
+        generation_reset(agent_generation);
+        simulate_agent_generation(agent_generation, map_level);
+        generation_num++;
+        vTaskDelay(1);//breathing room for watchdog timeout.
+        qsort(agent_generation, GENERATION_SIZE, sizeof(Agent), compare_fitness);
+    }
+
+    print_agent(&agent_generation[0]);
+}
+
+void double_cross_over(uint8_t *parent_a_dna, uint8_t *parent_b_dna, uint8_t *child_dna){
+    int first_cross_point;
+    int second_cross_point;
+    int temp_cross_point;
+    int random_main_parent;
+    
+    xorshift32();
+    random_main_parent = random_num % 2;
+    xorshift32();
+    first_cross_point = random_num % DNA_SIZE;
+    xorshift32();
+    second_cross_point = random_num % DNA_SIZE;
+
+    //assuring first_cross_point < second_cross_point, for loop efficiency.
+    if(first_cross_point > second_cross_point){
+        temp_cross_point = first_cross_point;
+        first_cross_point = second_cross_point;
+        second_cross_point = temp_cross_point; 
+    }
+
+    //parent_a is main genetics.
+    if(random_main_parent == 0){
+            
+        for(int i = 0; i < first_cross_point; i++){
+            child_dna[i] = parent_a_dna[i];
+        }
+
+        for(int i = first_cross_point; i < second_cross_point; i++){
+            child_dna[i] = parent_b_dna[i];
+        }
+
+        for(int i = second_cross_point; i < DNA_SIZE; i++){
+            child_dna[i] = parent_a_dna[i];
+        }
+    }//parent_b is main genetics
+    else{
+        for(int i = 0; i < first_cross_point; i++){
+            child_dna[i] = parent_b_dna[i];
+        }
+
+        for(int i = first_cross_point; i < second_cross_point; i++){
+            child_dna[i] = parent_a_dna[i];
+        }
+
+        for(int i = second_cross_point; i < DNA_SIZE; i++){
+            child_dna[i] = parent_b_dna[i];
         }
     }
-    //Physics
-    *y_velocity -= gravity;
-    *agent_y_axis += *y_velocity;
-    //Physics corretion
-    if(*agent_y_axis <= CIRCLE_CHARACTER_INITIAL_Y){
-        *y_velocity = 0;
-        *agent_y_axis = CIRCLE_CHARACTER_INITIAL_Y;
+}
+
+void mutation(uint8_t *child_dna, float mutation_rate_percent){
+    
+    for(int i = 0; i < DNA_SIZE; i ++){
+        xorshift32();
+
+        if((random_num % DNA_SIZE) < mutation_rate_percent){
+            //definit change in the cell if mutation occurs.
+            child_dna[i] += ((random_num % 3) + 1);
+            child_dna[i] = child_dna[i] % 4;
+        }
     }
 }
 
-//Headless simulator for agent training without rendering to screen.
-//Supposed to run a single agent until it dies or passes. 
-void simulate_agent(Agent *agent){
+void generation_reset(Agent *agent_generation){
 
-    int move_rate = 3;
-    int character_y_axis = CIRCLE_CHARACTER_INITIAL_Y;
-    int y_velocity = 0;
-    int character_x = 0;
-    int character_map_index = 0;
-
-    xorshift32();
-
-    while (!(agent->is_dead) && character_map_index < MAP_SIZE)
-    {
-        //Game tiles are obst width.
-        character_map_index = character_x / OBSTACLE_WIDTH;
-        character_x += move_rate;
-
-        agent_jump(agent, &y_velocity, character_map_index, &character_y_axis);
-
-        check_collision(character_x,character_y_axis, agent->map, &agent->is_dead);
-
+    for(int i = 0; i < GENERATION_SIZE; i++){
+        agent_generation[i].is_dead = false;
+        agent_generation[i].fitness = 0;
+        agent_generation[i].distance = 0;
     }
-
-    agent->distance = character_map_index;
 }
 
 /*
             ****TO DO****
-            render a single agent on screen - does not matter that he is not passing.
-            make fitness function (calculation if fitness - based on not dying, time in air for).
-            make init_gen_zero.
-            make genetic algorithm (double cross - over, mutation rate of 1/dna_length).
-            run one perfect agent of a map.
+            Training time is super long (7:14 min for 10,000 gens, 4:07 for 5000 gens) need optimization, 10000 generations basically "guranteed" level passed.
+            dna array out of bond at the end of the map.
+
             
             ****SCALING****
+            make consectual agents running
             mid run new map agent training, running in succesion.
             split into 2 cores.
 
