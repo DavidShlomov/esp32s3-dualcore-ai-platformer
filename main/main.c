@@ -39,7 +39,7 @@ void app_main(void)
     agent_generation = allocate_agent_array(GENERATION_SIZE);
     init_agent_array(agent_generation, GENERATION_SIZE);
 
-    simulate_agent_generation(agent_generation, map_level);
+    simulate_agent_generation(agent_generation, map_level, 0);
 
     qsort(agent_generation, GENERATION_SIZE, sizeof(Agent), compare_fitness);
 
@@ -396,6 +396,7 @@ void simulate_agent(Agent *agent, uint8_t *curr_level){
     int character_x = 0;
     int character_map_index = 0;
     bool above_obstacle = false;
+    bool received_map_pass_points = false;
 
     xorshift32();
 
@@ -408,7 +409,7 @@ void simulate_agent(Agent *agent, uint8_t *curr_level){
             break;
         }
         
-        calculate_fitness(&agent->fitness, character_y_axis, character_map_index, &above_obstacle, curr_level);
+        calculate_fitness(&agent->fitness, character_y_axis, character_map_index, &above_obstacle, curr_level, &received_map_pass_points);
 
         agent_jump(agent, &y_velocity, character_map_index, &character_y_axis);
 
@@ -420,7 +421,7 @@ void simulate_agent(Agent *agent, uint8_t *curr_level){
     agent->distance = character_map_index;
 }
 
-void calculate_fitness(int *fitness, int agent_y_axis, int map_index, bool *above_obstacle, uint8_t *curr_level){
+void calculate_fitness(int *fitness, int agent_y_axis, int map_index, bool *above_obstacle, uint8_t *curr_level, bool *received_map_pass_points){
 
     //agent is above an obstacle.
     if(agent_y_axis > CIRCLE_CHARACTER_INITIAL_Y && curr_level[map_index] > 0){
@@ -435,9 +436,10 @@ void calculate_fitness(int *fitness, int agent_y_axis, int map_index, bool *abov
     if(agent_y_axis > CIRCLE_CHARACTER_INITIAL_Y){
         *fitness -= 1;
     }
-    //last tile guranteed with no obstacle, map is passed.
-    if(map_index == MAP_SIZE - 1){
+    //last tile guranteed with no obstacle, map is passed, not getting multiple level passing points.
+    if(map_index == MAP_SIZE - 1 && !*received_map_pass_points){
         *fitness += 1000;
+        *received_map_pass_points = true;
     }
 }
 
@@ -500,8 +502,8 @@ Agent *allocate_champion_array(int array_size){
     return champion_array;
 }
 
-void simulate_agent_generation(Agent *agent_array, uint8_t *current_level){
-    for(int i = 0; i < GENERATION_SIZE; i++){
+void simulate_agent_generation(Agent *agent_array, uint8_t *current_level, int simulation_index_start){
+    for(int i = simulation_index_start; i < GENERATION_SIZE; i++){
         simulate_agent(&agent_array[i], current_level);
     }
 }
@@ -516,6 +518,7 @@ void natural_selection(Agent *agent_generation, uint8_t *map_level){
     int best_distance = 0;
     int local_optimum_check = 0;
     int mutation_rate_percent = 1;
+    int elite_cutoff = GENERATION_SIZE/2;
     uint8_t *parent_a;
     uint8_t *parent_b;
     uint8_t *child_to_evolve;
@@ -544,20 +547,20 @@ void natural_selection(Agent *agent_generation, uint8_t *map_level){
                 }
             }
         }
-
-        for(int i = GENERATION_SIZE/2; i < GENERATION_SIZE; i++){
+        //only changes dna after elite_cutoff index.
+        for(int i = elite_cutoff; i < GENERATION_SIZE; i++){
             xorshift32();
-            parent_a = agent_generation[random_num % (GENERATION_SIZE/2)].dna;
+            parent_a = agent_generation[random_num % (elite_cutoff)].dna;
             xorshift32();
-            parent_b = agent_generation[random_num % (GENERATION_SIZE/2)].dna;
+            parent_b = agent_generation[random_num % (elite_cutoff)].dna;
             child_to_evolve = agent_generation[i].dna;
 
             double_cross_over(parent_a, parent_b, child_to_evolve);
             mutation(child_to_evolve, mutation_rate_percent);
         }
-
-        generation_reset(agent_generation);
-        simulate_agent_generation(agent_generation, map_level);
+        //only resets after elite_cutoff index - safe, only later half of the array is rewritten.
+        generation_reset(agent_generation, elite_cutoff);
+        simulate_agent_generation(agent_generation, map_level, elite_cutoff);//simulating only agent indexes that changed dna.
         generation_num++;
         vTaskDelay(1);//breathing room for watchdog timeout.
         qsort(agent_generation, GENERATION_SIZE, sizeof(Agent), compare_fitness);
@@ -629,9 +632,9 @@ void mutation(uint8_t *child_dna, float mutation_rate_percent){
     }
 }
 
-void generation_reset(Agent *agent_generation){
+void generation_reset(Agent *agent_generation, int reset_index_start){
 
-    for(int i = 0; i < GENERATION_SIZE; i++){
+    for(int i = reset_index_start; i < GENERATION_SIZE; i++){
         agent_generation[i].is_dead = false;
         agent_generation[i].fitness = 0;
         agent_generation[i].distance = 0;

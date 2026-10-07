@@ -173,9 +173,9 @@ void agent_jump(Agent *agent, int *y_velocity, int dna_array_index, int *agent_y
 /// @param map_index Current map index.
 /// @param  above_obstacle true if agent currently above an obstacle, reset to false.  
 /// @param curr_level Current level agents are training on.
+/// @param received_map_pass_points - Flag if agent passed and received game level pass points. 
 /// @note above_obstacle is handeled inside current function, only need to reset a bool to false. 
-/// @note TODO: The end of the map bonus of +1000 currently fires once per tick spent on the final tile, need to fix
-void calculate_fitness(int *fitness, int agent_y_axis, int map_index, bool *above_obstacle, uint8_t *curr_level);
+void calculate_fitness(int *fitness, int agent_y_axis, int map_index, bool *above_obstacle, uint8_t *curr_level, bool *received_map_pass_points);
 
 /// @brief Allocates agent generation dynamically.
 /// @param array_size Agent array size.
@@ -199,7 +199,8 @@ Agent *allocate_champion_array(int array_size);
 /// @brief Simulates a full generation of agents.
 /// @param agent_generation Current generation to simulate.
 /// @param current_level Current level to simulate.
-void simulate_agent_generation(Agent *agent_generation, uint8_t *current_level);
+/// @param simulation_index_start the index of the agent array to start running simulations from.
+void simulate_agent_generation(Agent *agent_generation, uint8_t *current_level, int simulation_index_start);
 
 /// @brief Fitness compare function for qsort.
 /// @param agent_a First agent to compare.
@@ -226,4 +227,5 @@ void mutation(uint8_t *child_dna, float mutation_rate_percent);
 
 /// @brief Resets agent is_dead, fitness, distance parameters for re-simulating.
 /// @param agent_generation Agent generation to reset.
-void generation_reset(Agent *agent_generation);
+/// @param generation_index_start Index in which to start the reset of the current generation.
+void generation_reset(Agent *agent_generation, int generation_index_start);
