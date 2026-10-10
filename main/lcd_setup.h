@@ -12,10 +12,11 @@
 #include <math.h>
 
 /// @brief Initializes the SPI bus, LCD IO layer, and ILI9341 panel, then clears the screen and returns the ready-to-use panel handle.
-/// @param my_callback Callback invoked when an SPI DMA color transfer completes (see on_color_trans_done() in main.c).
+/// @param my_callback Callback invoked when an SPI DMA color transfer completes (see on_color_trans_done() in render.c).
+/// @param user_ctx Context pointer handed back to my_callback on every call (here: the DMA-ready semaphore handle). 
 /// @return Handle to the initialized ILI9341 panel, ready for esp_lcd_panel_draw_bitmap() calls.
 esp_lcd_panel_handle_t
-lcd_setup_main(esp_lcd_panel_io_color_trans_done_cb_t my_callback);
+lcd_setup_main(esp_lcd_panel_io_color_trans_done_cb_t my_callback, void *user_ctx);
 
 /// @brief Fills in the SPI bus configuration for the LCD (MOSI = GPIO15, SCLK = GPIO16, no MISO/quad lines).
 /// @param screen SPI bus config struct to populate.
@@ -24,7 +25,8 @@ void screen_config(spi_bus_config_t *screen);
 /// @brief Fills in the LCD panel IO configuration over SPI (CS = GPIO5, DC = GPIO7, 40MHz clock, mode 0).
 /// @param io_config Panel IO config struct to populate.
 /// @param my_callback Callback registered to run when a color transfer completes.
-void io_spi_config(esp_lcd_panel_io_spi_config_t *io_config, esp_lcd_panel_io_color_trans_done_cb_t my_callback);
+/// @param user_ctx Context pointer stored in io_config and passed back to my_callback.
+void io_spi_config(esp_lcd_panel_io_spi_config_t *io_config, esp_lcd_panel_io_color_trans_done_cb_t my_callback, void *user_ctx);
 
 /// @brief Fills in the ILI9341 panel device configuration (reset = GPIO6, RGB order, 16 bits per pixel).
 /// @param panel_dev Panel device config struct to populate.

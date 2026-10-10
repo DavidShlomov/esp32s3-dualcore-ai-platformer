@@ -1,49 +1,69 @@
-# GameEngine - Bare-Metal Genetic Algorithm Platformer (ESP32-S3)
+# GameEngine: Genetic Algorithm Platformer on ESP32-S3
 
-A 2D obstacle-jumping platformer built from scratch in C on the ESP32-S3, with a custom SPI/DMA display driver and a from-scratch genetic algorithm that trains an AI agent, headlessly, to clear a procedurally generated level - then plays back the evolved result live on a physical LCD.
+A 2D obstacle-jumping game written in C for the ESP32-S3, with a hand-written SPI/DMA display driver and a genetic algorithm that trains an agent to clear a randomly generated level. Training runs headlessly on the chip itself, then the evolved agent plays the level live on a physical LCD.
 
-No Arduino libraries, no ML frameworks, no OS-level graphics stack - just ESP-IDF, FreeRTOS, and raw C.
+No Arduino libraries and no ML frameworks. Just ESP-IDF, FreeRTOS, and C.
 
 ## What it does
 
-1. **Generates a random obstacle course** - a sequence of variable-height obstacles with guaranteed minimum spacing, so every run trains against a different level.
-2. **Evolves a population of 50 agents** against that level, headlessly (no rendering, as fast as the CPU allows): each agent's "DNA" is a sequence of jump decisions (one per tile - do nothing / jump low / medium / high), evaluated frame-by-frame against the same physics and collision logic used by the live game.
-3. **Selects, crosses over, and mutates** the population generation over generation, with an adaptive mutation rate that increases automatically when the population's progress plateaus.
-4. **Renders the best-evolved agent live** on a physical ILI9341 TFT over SPI/DMA, double-buffered, with the display update fully decoupled from the render loop via an ISR-driven semaphore handoff.
+1. **Generates a random obstacle course.** Obstacle heights are random, with guaranteed empty tiles at the start and end and a minimum gap between obstacles, so every boot produces a new level.
+2. **Evolves a population of 50 agents.** Each agent's DNA is one jump decision per map tile (none, low, medium, high). Agents are simulated without rendering, using the same physics and collision code as the live game.
+3. **Selects, crosses over, and mutates.** The top half of the population is kept each generation. The bottom half is rebuilt with two-point crossover and mutation. The mutation rate rises automatically when progress stalls.
+4. **Plays back the best agent live** on an ILI9341 TFT over SPI with DMA and double-buffered frames.
 
-## Why this isn't just "a platformer with an AI bolted on"
+## Technical highlights
 
-- **The display driver is hand-written**, not a library call. SPI bus init, panel bring-up, and double-buffered rendering are synchronized correctly with the DMA hardware via a binary semaphore released from the SPI completion ISR - so the CPU never writes into a buffer the display controller is still reading from mid-transfer.
-- **The physics and the training share one code path.** The same jump/gravity/collision functions run whether a human would be watching (live render loop) or an agent is being evaluated in the training loop - so the genetic algorithm is training against the actual game, not an approximation of it.
-- **Height clearance is a real constraint, not just tuning.** Each obstacle has to be cleared not just at its peak height but for the entire width of the jump arc that overlaps it - the maximum obstacle height any jump strength can clear is a closed-form function of its initial velocity, not something guessed by trial and error.
-- **Hit and diagnosed a real FreeRTOS watchdog trip.** Running thousands of generations synchronously starved the idle task long enough to trigger the task watchdog - fixed by yielding periodically inside the training loop, not by disabling the watchdog.
-- **Runs inside real embedded memory constraints.** PSRAM is used explicitly for the double frame buffers (`heap_caps_malloc` with `MALLOC_CAP_SPIRAM`); the RNG is a self-seeded xorshift32 stream rather than a library call, reseeded once from the hardware TRNG at boot.
+- **Hand-written display driver.** SPI bus setup, panel bring-up, and frame transfer are done directly against ESP-IDF's LCD APIs. A binary semaphore, given from the DMA completion ISR, makes sure the CPU never writes into a buffer the display is still reading.
+- **No shared globals between modules.** The ISR receives the semaphore through the driver's `user_ctx` pointer, and loop state such as `camera_x` is passed by pointer. Each module only touches what it is handed.
+- **One code path for training and playback.** Jump physics, collision, and fitness live in `game.c` and are used by both the headless simulator and the live loop, so the agent trains on the real game rather than an approximation.
+- **Fitness shaped by the physics.** An agent earns +100 for clearing an obstacle, loses 1 point per tick spent in the air (which favors the lowest jump that works), and gets a one-time +1000 for finishing the map. The three jump strengths were chosen from the jump-arc math: a jump has to stay above an obstacle for its whole width, not just reach its height once.
+- **Training cost cut in half.** Elite agents keep their DNA between generations, and simulation is deterministic, so only the rebuilt half of the population is re-simulated each generation.
+- **Real embedded constraints.** Frame buffers live in PSRAM (`heap_caps_malloc` with `MALLOC_CAP_SPIRAM`). The RNG is a small xorshift32 generator that seeds itself from the hardware RNG on first use.
+- **Debugged on hardware.** Running thousands of generations in one task tripped the FreeRTOS task watchdog. The fix was a short yield each generation, not disabling the watchdog.
 
-## Architecture
+## Project layout
 
-- `lcd_setup.c/.h` - SPI bus and ILI9341 panel initialization, GPIO pin configuration, DMA-driven full-screen writes.
-- `main.c` - game loop, physics, collision detection, procedural map generation, and the full genetic algorithm (population init, headless simulation, selection, crossover, mutation, adaptive mutation rate, fitness scoring).
-- `main.h` - shared constants, the `Agent` struct (DNA array + fitness/distance/death state), and Doxygen-documented function declarations.
+| File | Responsibility |
+|---|---|
+| `main.c` | `app_main`: setup, training, then the live render loop |
+| `configs.h` | Shared constants (screen, colors, physics, population sizes) and the jump enum |
+| `game.c/.h` | Map generation, collision, jump physics, fitness (safe to call without a display) |
+| `genetic_algorithm.c/.h` | `Agent` type, population handling, selection, crossover, mutation |
+| `render.c/.h` | Drawing, frame buffers, the DMA completion callback, game-over screen |
+| `lcd_setup.c/.h` | SPI bus, LCD IO layer, and ILI9341 panel initialization |
+| `prng.c/.h` | xorshift32 random number generator behind a single `get_random_num()` |
 
 ## Hardware
 
-- ESP32-S3 (Xtensa dual-core, though the current build runs single-core - see Roadmap)
-- 2.8" ILI9341 TFT LCD, SPI interface
-- ESP-IDF v6.0.1 / FreeRTOS
+- ESP32-S3 with PSRAM
+- 2.8" ILI9341 TFT, 320x240, SPI
+- ESP-IDF v6.0.1
 
-## Building and running
+| LCD signal | GPIO |
+|---|---|
+| MOSI | 15 |
+| SCLK | 16 |
+| CS | 5 |
+| DC | 7 |
+| RST | 6 |
+
+SPI clock is 40 MHz.
+
+## Build and run
 
 ```
 idf.py build flash monitor
 ```
-Watch the serial monitor for per-generation fitness/distance progress during training, then the display will show the evolved agent playing the level live.
+
+The serial monitor prints best fitness and distance every 100 generations during training. When training finishes, the display shows the best agent running the level.
 
 ## Roadmap
 
-- [ ] Move training onto the second core, running concurrently with live rendering (currently all training happens synchronously before the render loop starts).
-- [ ] Persistent "champion" storage - a fixed-size ring buffer of best-performing agents, so a new map can start training while a previous champion's run is still being displayed.
-- [ ] Random-immigrant injection and other diversity mechanisms to reduce premature convergence on harder maps.
+- [ ] Run training on the second core while the first core renders, so a new map can train during playback (training is currently about 50 seconds and blocks before playback starts).
+- [ ] Champion storage: a fixed-size ring buffer of the best agents, each paired with the map it solved.
+- [ ] Diversity mechanisms such as random immigrants, to reduce premature convergence on harder maps.
+- [ ] Bounds checking in obstacle drawing for the vertical axis.
 
-## What I'd do differently
+## What I would do differently
 
-The genetic algorithm's parameters (population size, mutation rate, generation cap) were tuned empirically against runtime constraints on real hardware, not derived analytically - a natural next step would be logging convergence data across multiple seeded runs to tune these more rigorously.
+The population size, mutation rates, and generation cap were tuned by hand against training time on the real hardware. A better approach is to log convergence over many seeded runs and tune from that data. I would also write a small deterministic test (fixed seed, fixed expected fitness) before refactoring, so a change in behavior shows up immediately instead of being checked by eye.

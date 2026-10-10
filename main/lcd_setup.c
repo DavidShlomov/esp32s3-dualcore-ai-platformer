@@ -1,6 +1,6 @@
 #include "lcd_setup.h"
 
-esp_lcd_panel_handle_t lcd_setup_main(esp_lcd_panel_io_color_trans_done_cb_t my_callback)
+esp_lcd_panel_handle_t lcd_setup_main(esp_lcd_panel_io_color_trans_done_cb_t my_callback, void *user_ctx)
 {
     spi_bus_config_t screen = {0};
     screen_config(&screen);
@@ -8,7 +8,7 @@ esp_lcd_panel_handle_t lcd_setup_main(esp_lcd_panel_io_color_trans_done_cb_t my_
 
     esp_lcd_panel_io_handle_t handle_io = NULL;
     esp_lcd_panel_io_spi_config_t io_config = {0};
-    io_spi_config(&io_config, my_callback);
+    io_spi_config(&io_config, my_callback, user_ctx);
     esp_lcd_new_panel_io_spi((esp_lcd_spi_bus_handle_t)SPI2_HOST, &io_config, &handle_io);
 
     esp_lcd_panel_handle_t panel_handle = NULL;
@@ -38,7 +38,7 @@ void screen_config(spi_bus_config_t *screen)
     screen->max_transfer_sz = 320 * 240 * 2 + 8;
 }
 
-void io_spi_config(esp_lcd_panel_io_spi_config_t *io_config, esp_lcd_panel_io_color_trans_done_cb_t my_callback)
+void io_spi_config(esp_lcd_panel_io_spi_config_t *io_config, esp_lcd_panel_io_color_trans_done_cb_t my_callback, void *user_ctx)
 {
     io_config->cs_gpio_num = 5;
     io_config->dc_gpio_num = 7;
@@ -48,6 +48,7 @@ void io_spi_config(esp_lcd_panel_io_spi_config_t *io_config, esp_lcd_panel_io_co
     io_config->lcd_cmd_bits = 8;
     io_config->lcd_param_bits = 8;
     io_config->on_color_trans_done = my_callback;
+    io_config->user_ctx = user_ctx;
 }
 
 void panel_config(esp_lcd_panel_dev_config_t *panel_dev)
@@ -55,24 +56,6 @@ void panel_config(esp_lcd_panel_dev_config_t *panel_dev)
     panel_dev->reset_gpio_num = 6;
     panel_dev->rgb_ele_order = LCD_RGB_ELEMENT_ORDER_RGB;
     panel_dev->bits_per_pixel = 16;
-}
-
-void draw_rect(esp_lcd_panel_handle_t panel_handle)
-{
-    // Allocate memory for a 100x100 pixel square on the heap
-    uint16_t *color_buffer = (uint16_t *)malloc(100 * 100 * sizeof(uint16_t));
-
-    // Fill the buffer with bright green color (RGB565: 0x07E0)
-    for (int i = 0; i < 100 * 100; i++)
-    {
-        color_buffer[i] = __builtin_bswap16(0x07E0);
-    }
-
-    // Draw the bitmap on the screen from coordinates (0,0) to (100,100)
-    esp_lcd_panel_draw_bitmap(panel_handle, 0, 0, 100, 100, color_buffer);
-
-    // Free the allocated memory to prevent memory leaks
-    free(color_buffer);
 }
 
 void black_screen(esp_lcd_panel_handle_t panel_handle)
