@@ -55,7 +55,6 @@ void app_main(void)
         //game tiles are obst width for simplicity.
         map_index = camera_x / OBSTACLE_WIDTH;
         map_offset = camera_x % OBSTACLE_WIDTH;
-        camera_x += MOVE_RATE;
 
         // Calculate where the character is in the global map
         
@@ -83,7 +82,9 @@ void app_main(void)
         back_buffer = temp_buffer;
 
         flush_screen_buffer(panel_handle, front_buffer);
-
+        
+        camera_x += MOVE_RATE;
+        // check_game_over may reset camera_x to 0, so the increment must come first
         check_game_over(map_index, &character_y_axis, &agent_generation[0].is_dead, &y_velocity , &camera_x, panel_handle);
 
     }

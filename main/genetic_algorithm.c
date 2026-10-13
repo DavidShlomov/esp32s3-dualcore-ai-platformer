@@ -17,7 +17,7 @@
 void simulate_agent(Agent *agent, uint8_t *curr_level){
     int character_y_axis = CIRCLE_CHARACTER_INITIAL_Y;
     int y_velocity = 0;
-    int character_x = 0;
+    int character_x = CIRCLE_CHARACTER_X_AXIS;
     int character_map_index = 0;
     bool above_obstacle = false;
     bool received_map_pass_points = false;
