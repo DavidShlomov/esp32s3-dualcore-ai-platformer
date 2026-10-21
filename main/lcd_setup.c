@@ -63,6 +63,11 @@ void black_screen(esp_lcd_panel_handle_t panel_handle)
     int chunk_lines = 10;
     uint16_t *color_buffer = (uint16_t *)malloc(340 * chunk_lines * sizeof(uint16_t));
 
+    if(color_buffer == NULL){
+        fprintf(stderr, "Error: color_buffer memory allocation failed.\n");
+        return;
+    }
+
     // fill small buffer with white color.
     for (int i = 0; i < 340 * chunk_lines; i++)
     {

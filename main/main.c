@@ -22,10 +22,14 @@ void app_main(void)
     int map_offset = 0;
     int y_velocity = 0;
     int camera_x = 0;
-    
     uint8_t *map_level;
     Agent *agent_generation = NULL;
     Agent *champion_agent_array = NULL;//TODO: later add a champion array sized 10.
+
+    if(dma_ready_sem == NULL){
+        fprintf(stderr, "Fatal Error: semaphore creation failed.\n");
+        exit(EXIT_FAILURE);
+    }
 
     xSemaphoreGive(dma_ready_sem);
 
@@ -90,7 +94,10 @@ void app_main(void)
     }
 }
 
+
 /*
+
+
             ****TO DO****
             Training time is ~50 sec, run time is  ~40 need optimization to be less training time then running for smooth level transition.
 

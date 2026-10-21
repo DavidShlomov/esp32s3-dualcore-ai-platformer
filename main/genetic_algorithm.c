@@ -175,6 +175,7 @@ void init_agent(Agent *new_agent){
     new_agent->fitness = 0;
     new_agent->is_dead = false;
     randomize_agent_dna(new_agent);
+    new_agent->map = NULL;
 }
 
 //4 options: 0 = no jump, 1 = low, 2 = medium, 3 = high.
@@ -195,12 +196,13 @@ void print_agent(Agent *agent){
 }
 
 Agent *allocate_agent_array(int array_size){
-    Agent *gen_zero = (Agent *) malloc(sizeof(Agent) * array_size);
+    Agent *agent_array = (Agent *) malloc(sizeof(Agent) * array_size);
 
-    if(gen_zero == NULL){
-        printf("Agent generation memory allocation failed.\n");
+    if(agent_array == NULL){
+        fprintf(stderr, "Fatal Error: agent_array memory allocation failed.\n");
+        exit(EXIT_FAILURE);
     }
-    return gen_zero;
+    return agent_array;
 }
 
 void init_agent_array(Agent *agent_generation, int array_size){
@@ -222,7 +224,8 @@ Agent *allocate_champion_array(int array_size){
     Agent *champion_array = (Agent *)calloc(array_size, sizeof(Agent));
 
     if(champion_array == NULL){
-        printf("Could not allocate champion array");
+        fprintf(stderr, "Fatal Error: champion array memory allocation failed.\n");
+        exit(EXIT_FAILURE);
     }
     return champion_array;
 }

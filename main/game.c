@@ -9,6 +9,12 @@
 uint8_t *build_map()
 {
     uint8_t *map_array = calloc(MAP_SIZE, sizeof(uint8_t));
+
+    if(map_array == NULL){
+        fprintf(stderr, "Fatal Error: map_array memory allocation failed.\n");
+        exit(EXIT_FAILURE);
+    }
+
     //starting with 12 empty cells, at least 2 last tiles empty.
     for (int i = NUM_OF_TILES_IN_SCREEN; i < MAP_SIZE - 2; i++)
     {
