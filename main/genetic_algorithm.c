@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "esp_log.h"
 
 
 
@@ -106,7 +107,7 @@ void natural_selection(Agent *agent_generation, uint8_t *map_level){
         vTaskDelay(1);//breathing room for watchdog timeout.
         qsort(agent_generation, GENERATION_SIZE, sizeof(Agent), compare_fitness);
     }
-
+    
     print_agent(&agent_generation[0]);
 }
 
@@ -199,8 +200,8 @@ Agent *allocate_agent_array(int array_size){
     Agent *agent_array = (Agent *) malloc(sizeof(Agent) * array_size);
 
     if(agent_array == NULL){
-        fprintf(stderr, "Fatal Error: agent_array memory allocation failed.\n");
-        exit(EXIT_FAILURE);
+        ESP_LOGE("MEM_TEST", "Fatal Error: agent_array memory allocation failed.\n");
+        abort();
     }
     return agent_array;
 }

@@ -1,27 +1,26 @@
 #include "lcd_setup.h"
-
 esp_lcd_panel_handle_t lcd_setup_main(esp_lcd_panel_io_color_trans_done_cb_t my_callback, void *user_ctx)
 {
     spi_bus_config_t screen = {0};
     screen_config(&screen);
-    spi_bus_initialize(SPI2_HOST, &screen, SPI_DMA_CH_AUTO);
+    ESP_ERROR_CHECK(spi_bus_initialize(SPI2_HOST, &screen, SPI_DMA_CH_AUTO));
 
     esp_lcd_panel_io_handle_t handle_io = NULL;
     esp_lcd_panel_io_spi_config_t io_config = {0};
     io_spi_config(&io_config, my_callback, user_ctx);
-    esp_lcd_new_panel_io_spi((esp_lcd_spi_bus_handle_t)SPI2_HOST, &io_config, &handle_io);
+    ESP_ERROR_CHECK(esp_lcd_new_panel_io_spi((esp_lcd_spi_bus_handle_t)SPI2_HOST, &io_config, &handle_io));
 
     esp_lcd_panel_handle_t panel_handle = NULL;
     esp_lcd_panel_dev_config_t panel_dev = {0};
     panel_config(&panel_dev);
-    esp_lcd_new_panel_ili9341(handle_io, &panel_dev, &panel_handle);
+    ESP_ERROR_CHECK(esp_lcd_new_panel_ili9341(handle_io, &panel_dev, &panel_handle));
 
-    esp_lcd_panel_reset(panel_handle);
-    esp_lcd_panel_init(panel_handle);
-    esp_lcd_panel_swap_xy(panel_handle, false);
-    esp_lcd_panel_mirror(panel_handle, true, true);
-    esp_lcd_panel_disp_on_off(panel_handle, true);
-    esp_lcd_panel_invert_color(panel_handle, false);
+    ESP_ERROR_CHECK(esp_lcd_panel_reset(panel_handle));
+    ESP_ERROR_CHECK(esp_lcd_panel_init(panel_handle));
+    ESP_ERROR_CHECK(esp_lcd_panel_swap_xy(panel_handle, false));
+    ESP_ERROR_CHECK(esp_lcd_panel_mirror(panel_handle, true, true));
+    ESP_ERROR_CHECK(esp_lcd_panel_disp_on_off(panel_handle, true));
+    ESP_ERROR_CHECK(esp_lcd_panel_invert_color(panel_handle, false));
 
     black_screen(panel_handle);
 

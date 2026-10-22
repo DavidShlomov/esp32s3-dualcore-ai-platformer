@@ -9,6 +9,7 @@
 #include "configs.h"
 #include "esp_attr.h"
 #include "freertos/task.h"
+#include "esp_log.h"
 
 
 void draw_road(uint16_t *screen_buffer)
@@ -29,12 +30,12 @@ void create_obstacle(uint16_t *screen_buffer, int height, int width, int x_axis_
             int current_x = x_axis_start + x;
             int current_y = ROAD_HEIGHT + y_axis_start + y;
 
-            int current_index = (current_y * SCREEN_WIDTH) + current_x;
-
-            if (current_x < 0 || current_x >= SCREEN_WIDTH)
+            if (current_x < 0 || current_x >= SCREEN_WIDTH || current_y < ROAD_HEIGHT || current_y >= SCREEN_HEIGHT)
             {
                 continue;
             }
+
+            int current_index = (current_y * SCREEN_WIDTH) + current_x;
 
             screen_buffer[current_index] = WHITE_COLOR;
         }
@@ -52,6 +53,7 @@ void draw_circle(uint16_t *screen_buffer, int x_center, int y_center, int radius
             int current_y = y_center - radius + y;
             int current_index = (current_y * SCREEN_WIDTH) + current_x;
 
+
             if (radius * radius >= (x - radius) * (x - radius) + (y - radius) * (y - radius))
             {
                 screen_buffer[current_index] = BURGUNDY_COLOR;
@@ -67,11 +69,8 @@ uint16_t *allocate_screen_buffer()
 
     if (!screen_buffer)
     {
-        printf("Error: screen buffer not initialized!");
-        while (1)
-        {
-            vTaskDelay(100 / portTICK_PERIOD_MS);
-        }
+        ESP_LOGE("MEM_TEST", "Fatal Error: screen_buffer memory allocation failed.\n");
+        abort();
     }
     return screen_buffer;
 }

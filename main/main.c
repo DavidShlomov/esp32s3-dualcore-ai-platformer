@@ -28,7 +28,7 @@ void app_main(void)
 
     if(dma_ready_sem == NULL){
         fprintf(stderr, "Fatal Error: semaphore creation failed.\n");
-        exit(EXIT_FAILURE);
+        abort();
     }
 
     xSemaphoreGive(dma_ready_sem);
