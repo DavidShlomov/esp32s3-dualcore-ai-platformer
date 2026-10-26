@@ -43,7 +43,6 @@ void app_main(void)
 
     simulate_agent_generation(agent_generation, map_level, 0);
 
-    qsort(agent_generation, GENERATION_SIZE, sizeof(Agent), compare_fitness);
 
 
     print_agent(&agent_generation[0]);
@@ -94,6 +93,8 @@ void app_main(void)
     }
 }
 
+
+    
 
 /*
 

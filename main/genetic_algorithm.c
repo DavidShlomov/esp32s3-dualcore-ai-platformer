@@ -67,9 +67,11 @@ void natural_selection(Agent *agent_generation, uint8_t *map_level){
     uint8_t *parent_b;
     uint8_t *child_to_evolve;
 
+    //initial sorting if agent gen was not sorted.
+    qsort(agent_generation, GENERATION_SIZE, sizeof(Agent), compare_fitness);
+
     //random number of generations will change later.
     while(generation_num < NUM_OF_GENERATIONS){
-
 
         if(generation_num % 100 == 0){
             printf("Gen %d: best fitness = %d, best distance = %d\n", generation_num, agent_generation[0].fitness, agent_generation[0].distance);
@@ -107,7 +109,8 @@ void natural_selection(Agent *agent_generation, uint8_t *map_level){
         vTaskDelay(1);//breathing room for watchdog timeout.
         qsort(agent_generation, GENERATION_SIZE, sizeof(Agent), compare_fitness);
     }
-    
+    //resseting in case that best agent did not pass level for first run.
+    agent_generation -> is_dead = false;
     print_agent(&agent_generation[0]);
 }
 

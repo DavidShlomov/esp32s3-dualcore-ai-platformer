@@ -51,8 +51,12 @@ void draw_circle(uint16_t *screen_buffer, int x_center, int y_center, int radius
         {
             int current_x = x_center - radius + x;
             int current_y = y_center - radius + y;
-            int current_index = (current_y * SCREEN_WIDTH) + current_x;
 
+            if(current_y >= SCREEN_HEIGHT || current_y < 0 || current_x < 0 || current_x >= SCREEN_WIDTH){
+                continue;
+            }
+
+            int current_index = (current_y * SCREEN_WIDTH) + current_x;
 
             if (radius * radius >= (x - radius) * (x - radius) + (y - radius) * (y - radius))
             {
