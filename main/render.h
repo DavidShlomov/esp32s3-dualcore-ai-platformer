@@ -7,10 +7,21 @@
 
 
 
+// Bitmap matrix for "LEVEL END"
+// 1 = White pixel, 0 = Black background
+static const uint8_t end_level_text[5][37] = {
+    {1, 0, 0, 0, 1, 1, 1, 0, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 1, 0, 0},
+    {1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, 1, 0, 1, 0, 0, 1, 0},
+    {1, 0, 0, 0, 1, 1, 1, 0, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0},
+    {1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0},
+    {1, 1, 1, 0, 1, 1, 1, 0, 0, 1, 0, 0, 1, 1, 1, 0, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 1, 0, 0}
+    };
+
 
 /// @brief Draws the "LEVEL END" screen and blocks for ~3 seconds before returning.
 /// @param panel_handle Screen panel handle.
-void show_level_end_screen(esp_lcd_panel_handle_t panel_handle);
+/// @param buffer to draw end screen on, Has to be SCREEN_SIZE.
+void show_level_end_screen(esp_lcd_panel_handle_t panel_handle, uint16_t *buffer);
 
 
 /// @brief Draws obstacle map based on map array given.
@@ -28,8 +39,9 @@ void draw_visible_obstacles(int map_index, int map_offset, int y_start_pos ,uint
 /// @param y_velocity Y velocity of the jump, gets rewritten.
 /// @param camera_x X position of the current screen frame.
 /// @param panel_handle Screen panel handle.
+/// @param buffer to draw end screen on, Has to be SCREEN_SIZE.
 /// @note If game over, blocks 500ms then calls show_level_end_screen() which blocks a further 3 seconds.
-void check_game_over(int map_index, int *character_y_axis, bool *is_dead, int *y_velocity, int *camera_x, esp_lcd_panel_handle_t panel_handle);
+void check_game_over(int map_index, int *character_y_axis, bool *is_dead, int *y_velocity, int *camera_x, esp_lcd_panel_handle_t panel_handle, uint16_t *buffer);
 
 /// @brief Draws the road into the screen's PSRAM buffer.
 /// @param screen_buffer Screen PSRAM array, must point to a buffer of at least SCREEN_SIZE uint16_t elements.

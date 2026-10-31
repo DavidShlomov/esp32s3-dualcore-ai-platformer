@@ -5,6 +5,7 @@
 #include "render.h"
 #include "genetic_algorithm.h"
 #include "freertos/semphr.h"
+#include "prng.h"
 
 static SemaphoreHandle_t dma_ready_sem = NULL;
 
@@ -88,13 +89,13 @@ void app_main(void)
         
         camera_x += MOVE_RATE;
         // check_game_over may reset camera_x to 0, so the increment must come first
-        check_game_over(map_index, &character_y_axis, &agent_generation[0].is_dead, &y_velocity , &camera_x, panel_handle);
+        check_game_over(map_index, &character_y_axis, &agent_generation[0].is_dead, &y_velocity , &camera_x, panel_handle, back_buffer);
 
     }
 }
 
 
-    
+
 
 /*
 

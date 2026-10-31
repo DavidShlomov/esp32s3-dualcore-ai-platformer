@@ -10,6 +10,7 @@
 #include "esp_attr.h"
 #include "freertos/task.h"
 #include "esp_log.h"
+#include <string.h>
 
 
 void draw_road(uint16_t *screen_buffer)
@@ -45,9 +46,9 @@ void create_obstacle(uint16_t *screen_buffer, int height, int width, int x_axis_
 // circle character for simplicity.
 void draw_circle(uint16_t *screen_buffer, int x_center, int y_center, int radius)
 {
-    for (int y = 0; y < 2 * radius; y++)
+    for (int y = 0; y <= 2 * radius; y++)
     {
-        for (int x = 0; x < 2 * radius; x++)
+        for (int x = 0; x <= 2 * radius; x++)
         {
             int current_x = x_center - radius + x;
             int current_y = y_center - radius + y;
@@ -81,12 +82,7 @@ uint16_t *allocate_screen_buffer()
 
 void fill_screen_black(uint16_t *screen_buffer)
 {
-
-    // memset(screen_buffer, INVERTED_WHITE, screen_size * sizeof(uint16_t));
-    for (int i = 0; i < SCREEN_SIZE; i++)
-    {
-        screen_buffer[i] = BLACK_COLOR;
-    }
+    memset(screen_buffer, BLACK_COLOR, SCREEN_SIZE * sizeof(uint16_t));
 }
 
 void flush_screen_buffer(esp_lcd_panel_handle_t panel_handle, uint16_t *screen_buffer)
@@ -104,20 +100,10 @@ IRAM_ATTR bool on_color_trans_done(esp_lcd_panel_io_handle_t panel_io, esp_lcd_p
 }
 
 //draw LEVEL END on screen.
-void show_level_end_screen(esp_lcd_panel_handle_t panel_handle)
+void show_level_end_screen(esp_lcd_panel_handle_t panel_handle, uint16_t *buffer)
 {
     // Initialize buffer and paint it black
-    uint16_t *end_screen = allocate_screen_buffer();
-    fill_screen_black(end_screen);
-
-    // Bitmap matrix for "LEVEL END" (5 rows, 37 columns)
-    // 1 = White pixel, 0 = Black background
-    const uint8_t text_bitmap[5][37] = {
-        {1, 0, 0, 0, 1, 1, 1, 0, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 1, 0, 0},
-        {1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, 1, 0, 1, 0, 0, 1, 0},
-        {1, 0, 0, 0, 1, 1, 1, 0, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0},
-        {1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0},
-        {1, 1, 1, 0, 1, 1, 1, 0, 0, 1, 0, 0, 1, 1, 1, 0, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 1, 0, 0}};
+    fill_screen_black(buffer);
 
     // Configuration for retro scaling and screen centering
     int scale = 4; // Each '1' in the bitmap becomes a 4x4 pixel square
@@ -137,7 +123,7 @@ void show_level_end_screen(esp_lcd_panel_handle_t panel_handle)
     {
         for (int col = 0; col < bitmap_width; col++)
         {
-            if (text_bitmap[row][col] == 1)
+            if (end_level_text[row][col] == 1)
             {
                 // Draw a scaled block for each active pixel in the bitmap
                 for (int dy = 0; dy < scale; dy++)
@@ -151,7 +137,7 @@ void show_level_end_screen(esp_lcd_panel_handle_t panel_handle)
                         if (screen_x >= 0 && screen_x < SCREEN_WIDTH && screen_y >= 0 && screen_y < SCREEN_HEIGHT)
                         {
                             int index = (screen_y * SCREEN_WIDTH) + screen_x;
-                            end_screen[index] = WHITE_COLOR;
+                            buffer[index] = WHITE_COLOR;
                         }
                     }
                 }
@@ -160,13 +146,11 @@ void show_level_end_screen(esp_lcd_panel_handle_t panel_handle)
     }
 
     // Send the buffer to the physical display
-    flush_screen_buffer(panel_handle, end_screen);
+    flush_screen_buffer(panel_handle, buffer);
 
     // Pause the game for 3 seconds to let the player read it
     vTaskDelay(3000 / portTICK_PERIOD_MS);
 
-    // Free the dynamically allocated memory to prevent memory leaks
-    free(end_screen);
 }
 
 void draw_visible_obstacles(int map_index, int map_offset, int y_start_pos ,uint8_t *curr_level, uint16_t *screen_buffer){
@@ -186,13 +170,13 @@ void draw_visible_obstacles(int map_index, int map_offset, int y_start_pos ,uint
 }
 
 
-void check_game_over(int map_index, int *character_y_axis, bool *is_dead, int *y_velocity , int *camera_x, esp_lcd_panel_handle_t panel_handle){
+void check_game_over(int map_index, int *character_y_axis, bool *is_dead, int *y_velocity , int *camera_x, esp_lcd_panel_handle_t panel_handle, uint16_t *buffer){
 
     //maybe later add different screens for level finish and death.
     if (map_index >= MAP_SIZE || *is_dead)
     {
         vTaskDelay(500 / portTICK_PERIOD_MS); // Give a half second to see the death
-        show_level_end_screen(panel_handle);
+        show_level_end_screen(panel_handle, buffer);
         *camera_x = 0;
         *character_y_axis = CIRCLE_CHARACTER_INITIAL_Y;
         *is_dead = false;

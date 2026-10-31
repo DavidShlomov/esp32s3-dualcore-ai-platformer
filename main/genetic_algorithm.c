@@ -63,6 +63,7 @@ void natural_selection(Agent *agent_generation, uint8_t *map_level){
     int local_optimum_check = 0;
     int mutation_rate_percent = 1;
     int elite_cutoff = GENERATION_SIZE/2;
+    int fitnnes_cutoff = 2100;
     uint8_t *parent_a;
     uint8_t *parent_b;
     uint8_t *child_to_evolve;
@@ -70,11 +71,14 @@ void natural_selection(Agent *agent_generation, uint8_t *map_level){
     //initial sorting if agent gen was not sorted.
     qsort(agent_generation, GENERATION_SIZE, sizeof(Agent), compare_fitness);
 
-    //random number of generations will change later.
-    while(generation_num < NUM_OF_GENERATIONS){
+    //above good fitness result, or max the number of generations met to shorten learning time.
+    while( !(agent_generation -> fitness > fitnnes_cutoff) && generation_num < NUM_OF_GENERATIONS){
 
         if(generation_num % 100 == 0){
+            
+            //debugging print.
             printf("Gen %d: best fitness = %d, best distance = %d\n", generation_num, agent_generation[0].fitness, agent_generation[0].distance);
+            
             //best_distance is not at local-optimum.
             if(best_distance != agent_generation[0].distance){
                 best_distance = agent_generation[0].distance;
@@ -106,7 +110,12 @@ void natural_selection(Agent *agent_generation, uint8_t *map_level){
         generation_reset(agent_generation, elite_cutoff);
         simulate_agent_generation(agent_generation, map_level, elite_cutoff);//simulating only agent indexes that changed dna.
         generation_num++;
-        vTaskDelay(1);//breathing room for watchdog timeout.
+
+        //speeding training by yielding every 50 gens.
+        if(generation_num % 50 == 0){
+            vTaskDelay(1);//breathing room for watchdog timeout.
+        }
+
         qsort(agent_generation, GENERATION_SIZE, sizeof(Agent), compare_fitness);
     }
     //resseting in case that best agent did not pass level for first run.
