@@ -16,14 +16,14 @@ uint8_t *build_map(void);
 /// @param character_y_axis Character location on the y axis.
 /// @param curr_level Level array of obstacles.
 /// @param is_dead Output parameter set to true if the character overlaps an obstacle.
-void check_collision(int character_global_x, int character_y_axis, uint8_t *curr_level, bool *is_dead);
+bool check_collision(int character_global_x, int character_y_axis, const uint8_t *curr_level, bool *is_dead);
 
 /// @brief Agent jumping logic.
 /// @param agent Current agent that is run.
 /// @param y_velocity Y velocity of the jump, gets rewritten.
 /// @param dna_array_index Current agent DNA index of the current tile.
 /// @param agent_y_axis Current agent y axis location on the map, gets rewritten.
-void agent_jump(Agent *agent, int *y_velocity, int dna_array_index, int *agent_y_axis);
+void agent_jump(const Agent *agent, int *y_velocity, int dna_array_index, int *agent_y_axis);
 
 /// @brief Calculates fitness of the agent.
 /// @param fitness fitness of the agent, need to be set to 0 (see init_agent()).
@@ -33,8 +33,8 @@ void agent_jump(Agent *agent, int *y_velocity, int dna_array_index, int *agent_y
 /// @param curr_level Current level agents are training on.
 /// @param received_map_pass_points - Flag if agent passed and received game level pass points. 
 /// @note above_obstacle is handeled inside current function, only need to reset a bool to false. 
-void calculate_fitness(int *fitness, int agent_y_axis, int map_index, bool *above_obstacle, uint8_t *curr_level, bool *received_map_pass_points);
+void calculate_fitness(int *fitness, int agent_y_axis, int map_index, bool *above_obstacle, const uint8_t *curr_level, bool *received_map_pass_points);
 
 /// @brief Prints the level's obstacle-height array to stdout, space-separated.
 /// @param map_array Pointer to an array of MAP_SIZE uint8_t elements (see build_map()).
-void print_map_array(const uint8_t *map_array);
+void print_byte_array(const uint8_t *map_array, const int array_size);

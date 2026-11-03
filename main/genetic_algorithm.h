@@ -18,14 +18,14 @@ typedef struct
 /// @param agent Current agent to simulate.
 /// @param curr_level Current level agents are training on.
 /// @note Precondition: agent->dna and agent-> map must already be initialized (see init_agent()) before calling.
-void simulate_agent(Agent *agent, uint8_t *curr_level);
+void simulate_agent(Agent *agent, const uint8_t *curr_level);
 
 
 /// @brief Simulates a full generation of agents.
 /// @param agent_generation Current generation to simulate.
 /// @param current_level Current level to simulate.
 /// @param simulation_index_start the index of the agent array to start running simulations from.
-void simulate_agent_generation(Agent *agent_generation, uint8_t *current_level, int simulation_index_start);
+void simulate_agent_generation(Agent *agent_generation, const uint8_t *curr_level, int simulation_index_start);
 
 /// @brief Fitness compare function for qsort.
 /// @param agent_a First agent to compare.
@@ -62,7 +62,7 @@ void randomize_agent_dna(Agent *new_agent);
 
 /// @brief Prints all agent parameters for debugging.
 /// @param agent Current agent to print parameters of.
-void print_agent(Agent *agent);
+void print_agent(const Agent *agent);
 
 /// @brief Allocates agent generation dynamically.
 /// @param array_size Agent array size.
@@ -76,7 +76,7 @@ void init_agent_array(Agent *agent_generation, int array_size);
 /// @brief prints a full generation of agents sizeof(GENERATION_SIZE).
 /// @param agent_generation Generation to be printed.
 /// @param array_size Agent array size.
-void print_agent_array(Agent *agent_generation, int array_size);
+void print_agent_array(const Agent *agent_generation, int array_size);
 
 /// @brief Allocating champion agent array using calloc for reset.
 /// @param array_size Champions array size.

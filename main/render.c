@@ -153,7 +153,7 @@ void show_level_end_screen(esp_lcd_panel_handle_t panel_handle, uint16_t *buffer
 
 }
 
-void draw_visible_obstacles(int map_index, int map_offset, int y_start_pos ,uint8_t *curr_level, uint16_t *screen_buffer){
+void draw_visible_obstacles(int map_index, int map_offset, int y_start_pos ,const uint8_t *curr_level, uint16_t *screen_buffer){
 
             //drawing map based on map array heights.
         for (int i = map_index; i < map_index + NUM_OF_TILES_IN_SCREEN; i++)
@@ -177,9 +177,13 @@ void check_game_over(int map_index, int *character_y_axis, bool *is_dead, int *y
     {
         vTaskDelay(500 / portTICK_PERIOD_MS); // Give a half second to see the death
         show_level_end_screen(panel_handle, buffer);
-        *camera_x = 0;
-        *character_y_axis = CIRCLE_CHARACTER_INITIAL_Y;
-        *is_dead = false;
-        *y_velocity = 0;
+        reset_game_over_stats(character_y_axis, is_dead, y_velocity, camera_x);
     }
+}
+
+void reset_game_over_stats(int *character_y_axis, bool *is_dead, int *y_velocity , int *camera_x){
+    *camera_x = 0;
+    *character_y_axis = CIRCLE_CHARACTER_INITIAL_Y;
+    *is_dead = false;
+    *y_velocity = 0;
 }

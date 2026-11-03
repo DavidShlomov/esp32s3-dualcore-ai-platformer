@@ -25,7 +25,8 @@ void app_main(void)
     int camera_x = 0;
     uint8_t *map_level;
     Agent *agent_generation = NULL;
-    Agent *champion_agent_array = NULL;//TODO: later add a champion array sized 10.
+    // Agent *champion_agent_array = NULL;//TODO: later add a champion array sized 10.
+
 
     if(dma_ready_sem == NULL){
         fprintf(stderr, "Fatal Error: semaphore creation failed.\n");
@@ -47,12 +48,12 @@ void app_main(void)
 
 
     print_agent(&agent_generation[0]);
-    print_map_array(map_level);
+    print_byte_array(map_level, MAP_SIZE);
 
     natural_selection(agent_generation, map_level);
     print_agent(&agent_generation[0]);
 
-
+ 
     // Infinite loop to keep the task alive
     while (1)
     {

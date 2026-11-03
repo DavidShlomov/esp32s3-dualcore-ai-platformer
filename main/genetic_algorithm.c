@@ -15,7 +15,7 @@
 
 //Headless simulator for agent training without rendering to screen.
 //Supposed to run a single agent until it dies or passes. 
-void simulate_agent(Agent *agent, uint8_t *curr_level){
+void simulate_agent(Agent *agent, const uint8_t *curr_level){
     int character_y_axis = CIRCLE_CHARACTER_INITIAL_Y;
     int y_velocity = 0;
     int character_x = CIRCLE_CHARACTER_X_AXIS;
@@ -46,15 +46,18 @@ void simulate_agent(Agent *agent, uint8_t *curr_level){
 }
 
 
-void simulate_agent_generation(Agent *agent_array, uint8_t *current_level, int simulation_index_start){
+void simulate_agent_generation(Agent *agent_array, const uint8_t *curr_level, int simulation_index_start){
     for(int i = simulation_index_start; i < GENERATION_SIZE; i++){
-        simulate_agent(&agent_array[i], current_level);
+        simulate_agent(&agent_array[i], curr_level);
     }
 }
 
 //Comparioson function for qsort.
 int compare_fitness(const void *agent_a, const void *agent_b){
-    return ((Agent *)agent_b)->fitness - ((Agent *)agent_a) -> fitness;
+    int fitness_a, fitness_b;
+    fitness_a = ((Agent *)agent_a)->fitness;
+    fitness_b = ((Agent *)agent_b)->fitness;
+    return fitness_b - fitness_a;
 }
 
 void natural_selection(Agent *agent_generation, uint8_t *map_level){
@@ -199,13 +202,13 @@ void randomize_agent_dna(Agent *new_agent){
     }
 }
 
-void print_agent(Agent *agent){
+void print_agent(const Agent *agent){
 
     printf("Agent fitness is: %d\n", agent->fitness);
     printf("Agent death status is: %s\n", agent->is_dead ? "true" : "false");
     printf("Agent distance is: %d\n", agent->distance);
     printf("Agent dna is: \n");
-    print_map_array(agent->dna);
+    print_byte_array(agent->dna, DNA_SIZE);
 }
 
 Agent *allocate_agent_array(int array_size){
@@ -225,7 +228,7 @@ void init_agent_array(Agent *agent_generation, int array_size){
     }
 }
 
-void print_agent_array(Agent *agent_generation, int array_size){
+void print_agent_array(const Agent *agent_generation, int array_size){
     
     for(int i = 0; i < array_size; i++){
         printf("Agent %d:\n", i + 1);

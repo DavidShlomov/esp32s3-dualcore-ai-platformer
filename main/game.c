@@ -29,7 +29,7 @@ uint8_t *build_map()
 }
 
 
-void check_collision(int character_global_x, int character_y_axis, uint8_t *curr_level, bool *is_dead){
+bool check_collision(int character_global_x, int character_y_axis, const uint8_t *curr_level, bool *is_dead){
     // Calculate the global X of the character's right and left edges
     int char_right_edge = character_global_x + CIRCLE_CHARACTER_RADIUS;
     int char_left_edge = character_global_x - CIRCLE_CHARACTER_RADIUS;
@@ -38,6 +38,9 @@ void check_collision(int character_global_x, int character_y_axis, uint8_t *curr
     // Find the range of tiles the character is currently overlapping (Left and Right)
     int start_index = char_left_edge / OBSTACLE_WIDTH;
     int end_index = char_right_edge / OBSTACLE_WIDTH;
+
+    //Clear previous is_dead value.
+    *is_dead = false;
 
     // Loop through all tiles the character touches to prevent clipping through corners
     for (int idx = start_index; idx <= end_index; idx++)
@@ -54,15 +57,17 @@ void check_collision(int character_global_x, int character_y_axis, uint8_t *curr
             if (char_right_edge > obs_left_edge && char_left_edge < obs_right_edge && char_bottom_edge < obs_top_edge)
             {
                 *is_dead = true;
-                break; // Once we hit something, no need to check other tiles
+                return true; // Once we hit something, no need to check other tiles
             }
         }
     }
+
+    return false;
 }
 
 
 //Agent jumping logic need to callibrate numbers later.
-void agent_jump(Agent *agent, int *y_velocity, int dna_array_index, int *agent_y_axis){
+void agent_jump(const Agent *agent, int *y_velocity, int dna_array_index, int *agent_y_axis){
     int gravity = 1;
 
     if(dna_array_index >= DNA_SIZE){
@@ -97,7 +102,7 @@ void agent_jump(Agent *agent, int *y_velocity, int dna_array_index, int *agent_y
 }
 
 
-void calculate_fitness(int *fitness, int agent_y_axis, int map_index, bool *above_obstacle, uint8_t *curr_level, bool *received_map_pass_points){
+void calculate_fitness(int *fitness, int agent_y_axis, int map_index, bool *above_obstacle, const uint8_t *curr_level, bool *received_map_pass_points){
 
     //agent is above an obstacle.
     if(agent_y_axis > CIRCLE_CHARACTER_INITIAL_Y && curr_level[map_index] > 0){
@@ -119,9 +124,9 @@ void calculate_fitness(int *fitness, int agent_y_axis, int map_index, bool *abov
     }
 }
 
-void print_map_array(const uint8_t *map_array)
+void print_byte_array(const uint8_t *map_array, const int array_size)
 {
-    for (int i = 0; i < MAP_SIZE; i++)
+    for (int i = 0; i < array_size; i++)
     {
         printf("%d ", map_array[i]);
     }

@@ -30,7 +30,7 @@ void show_level_end_screen(esp_lcd_panel_handle_t panel_handle, uint16_t *buffer
 /// @param y_start_pos Y start position of the obstacle, measured upward from the road's bottom-most edge.
 /// @param curr_level Array of obstacles of the current level.
 /// @param screen_buffer Final Screen PSRAM array, must point to a buffer of at least SCREEN_SIZE uint16_t elements. 
-void draw_visible_obstacles(int map_index, int map_offset, int y_start_pos ,uint8_t *curr_level, uint16_t *screen_buffer);
+void draw_visible_obstacles(int map_index, int map_offset, int y_start_pos ,const uint8_t *curr_level, uint16_t *screen_buffer);
 
 /// @brief Checks if character died or map ended.
 /// @param map_index Current map index in the array.  
@@ -41,6 +41,7 @@ void draw_visible_obstacles(int map_index, int map_offset, int y_start_pos ,uint
 /// @param panel_handle Screen panel handle.
 /// @param buffer to draw end screen on, Has to be SCREEN_SIZE.
 /// @note If game over, blocks 500ms then calls show_level_end_screen() which blocks a further 3 seconds.
+/// @note Rewrite happen in  reset_game_over_stats().
 void check_game_over(int map_index, int *character_y_axis, bool *is_dead, int *y_velocity, int *camera_x, esp_lcd_panel_handle_t panel_handle, uint16_t *buffer);
 
 /// @brief Draws the road into the screen's PSRAM buffer.
@@ -84,3 +85,10 @@ void flush_screen_buffer(esp_lcd_panel_handle_t panel_handle, uint16_t *screen_b
 /// @param y_start Center of the circle y coordinate on screen.
 /// @param radius Radius of the character in pixels (decides the size of the character).
 void draw_circle(uint16_t *screen_buffer, int x_start, int y_start, int radius);
+
+/// @brief Resets the game over parameters for fresh rendering on screen.
+/// @param character_y_axis Character center y axis location on screen, gets rewritten.
+/// @param is_dead True if a collision occured, false otherwise, gets rewritten.
+/// @param y_velocity Y velocity of the jump, gets rewritten.
+/// @param camera_x X position of the current screen frame.
+void reset_game_over_stats(int *character_y_axis, bool *is_dead, int *y_velocity , int *camera_x);
