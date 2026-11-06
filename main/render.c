@@ -87,7 +87,7 @@ void fill_screen_black(uint16_t *screen_buffer)
 
 void flush_screen_buffer(esp_lcd_panel_handle_t panel_handle, uint16_t *screen_buffer)
 {
-    esp_lcd_panel_draw_bitmap(panel_handle, 0, 0, 320, 240, screen_buffer);
+    esp_lcd_panel_draw_bitmap(panel_handle, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, screen_buffer);
 }
 
 // ISR for SPI DMA transfer complete.
@@ -170,14 +170,16 @@ void draw_visible_obstacles(int map_index, int map_offset, int y_start_pos ,cons
 }
 
 
-void check_game_over(int map_index, int *character_y_axis, bool *is_dead, int *y_velocity , int *camera_x, esp_lcd_panel_handle_t panel_handle, uint16_t *buffer){
-
+void check_game_over(int map_index, int *character_y_axis, bool *is_dead, int *y_velocity , int *camera_x, esp_lcd_panel_handle_t panel_handle, uint16_t *buffer, int *champion_index){
+    int time_delay = 500;
     //maybe later add different screens for level finish and death.
     if (map_index >= MAP_SIZE || *is_dead)
     {
-        vTaskDelay(500 / portTICK_PERIOD_MS); // Give a half second to see the death
+        vTaskDelay(time_delay / portTICK_PERIOD_MS); // Give a half second to see the death point.
         show_level_end_screen(panel_handle, buffer);
         reset_game_over_stats(character_y_axis, is_dead, y_velocity, camera_x);
+        *champion_index += 1;
+        *champion_index = *champion_index % CHAMPION_ARRAY_SIZE;
     }
 }
 

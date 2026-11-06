@@ -8,11 +8,6 @@
 #include "esp_log.h"
 
 
-
-
-
-
-
 //Headless simulator for agent training without rendering to screen.
 //Supposed to run a single agent until it dies or passes. 
 void simulate_agent(Agent *agent, const uint8_t *curr_level){
@@ -64,9 +59,14 @@ void natural_selection(Agent *agent_generation, uint8_t *map_level){
     int generation_num = 0;
     int best_distance = 0;
     int local_optimum_check = 0;
+    int max_local_optimum = 3;
     int mutation_rate_percent = 1;
     int elite_cutoff = GENERATION_SIZE/2;
     int fitnnes_cutoff = 2100;
+    int max_stagnant_generations = 100; //number of generation to check if the fitness did not improve to shake up the genetics.
+    int mutation_rate_addition = 2;
+    int max_mutation_rate = 10;
+    int watchdog_idle_optimization = 50; // number of generations to let watchdog breath.
     uint8_t *parent_a;
     uint8_t *parent_b;
     uint8_t *child_to_evolve;
@@ -77,7 +77,7 @@ void natural_selection(Agent *agent_generation, uint8_t *map_level){
     //above good fitness result, or max the number of generations met to shorten learning time.
     while( !(agent_generation -> fitness > fitnnes_cutoff) && generation_num < NUM_OF_GENERATIONS){
 
-        if(generation_num % 100 == 0){
+        if(generation_num % max_stagnant_generations == 0){
             
             //debugging print.
             printf("Gen %d: best fitness = %d, best distance = %d\n", generation_num, agent_generation[0].fitness, agent_generation[0].distance);
@@ -91,10 +91,10 @@ void natural_selection(Agent *agent_generation, uint8_t *map_level){
             else{
                 local_optimum_check++;
                 //local_optimum is consistent - need to shake up with mutation percent increase. 
-                if(local_optimum_check >= 3){
-                    mutation_rate_percent += 2;
-                    if(mutation_rate_percent > 10){
-                        mutation_rate_percent = 10;
+                if(local_optimum_check >= max_local_optimum){
+                    mutation_rate_percent += mutation_rate_addition;
+                    if(mutation_rate_percent > max_mutation_rate){
+                        mutation_rate_percent = max_mutation_rate;
                     }
                     local_optimum_check = 0;
                 }
@@ -115,14 +115,17 @@ void natural_selection(Agent *agent_generation, uint8_t *map_level){
         generation_num++;
 
         //speeding training by yielding every 50 gens.
-        if(generation_num % 50 == 0){
+        if(generation_num % watchdog_idle_optimization == 0){
             vTaskDelay(1);//breathing room for watchdog timeout.
         }
 
         qsort(agent_generation, GENERATION_SIZE, sizeof(Agent), compare_fitness);
     }
     //resseting in case that best agent did not pass level for first run.
-    agent_generation -> is_dead = false;
+    // agent_generation -> is_dead = false;
+
+    //best agent keeps the map.
+    agent_generation -> map = map_level;
     print_agent(&agent_generation[0]);
 }
 
@@ -209,6 +212,13 @@ void print_agent(const Agent *agent){
     printf("Agent distance is: %d\n", agent->distance);
     printf("Agent dna is: \n");
     print_byte_array(agent->dna, DNA_SIZE);
+    printf("\n");
+
+    if(agent -> map != NULL){
+        printf("agent map is: ");
+        print_byte_array(agent->map, MAP_SIZE);
+        printf("\n");
+    }
 }
 
 Agent *allocate_agent_array(int array_size){
@@ -253,4 +263,14 @@ void generation_reset(Agent *agent_generation, int reset_index_start){
         agent_generation[i].fitness = 0;
         agent_generation[i].distance = 0;
     }
+}
+
+void copy_agent_param(Agent *source, Agent *destination){
+
+    destination -> distance = source -> distance;
+    destination -> fitness = source -> fitness;
+    destination -> is_dead = source -> is_dead;
+    destination -> map = source -> map;
+    source -> map = NULL; //preventing 2 different agents having the same map pointer.
+    memcpy(destination -> dna, source -> dna, DNA_SIZE * sizeof(uint8_t)); 
 }

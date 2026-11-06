@@ -18,15 +18,15 @@
 #define DNA_SIZE MAP_SIZE
 #define NUM_OF_TILES_IN_SCREEN 12
 #define GENERATION_SIZE 50
-#define CHAMPION_SIZE 10
 #define NUM_OF_GENERATIONS 2500
 #define MOVE_RATE 3
+#define CHAMPION_ARRAY_SIZE 10
 
 
 enum jump_strength
 {
     NONE,
-    LOW,
-    MEDIUM,
-    HIGH
+    JUMP_LOW,
+    JUMP_MEDIUM,
+    JUMP_HIGH
 };

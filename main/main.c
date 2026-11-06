@@ -25,8 +25,14 @@ void app_main(void)
     int camera_x = 0;
     uint8_t *map_level;
     Agent *agent_generation = NULL;
-    // Agent *champion_agent_array = NULL;//TODO: later add a champion array sized 10.
+    Agent *champion_agent_array = NULL;//TODO: later add a champion array sized 10.
+    int champion_index = 0;
+    int champion_prev_index = 0;
+    int current_champion_running_flag = 0;
 
+
+    champion_agent_array = allocate_agent_array(CHAMPION_ARRAY_SIZE);
+    agent_generation = allocate_agent_array(GENERATION_SIZE);
 
     if(dma_ready_sem == NULL){
         fprintf(stderr, "Fatal Error: semaphore creation failed.\n");
@@ -38,25 +44,32 @@ void app_main(void)
     // Print initialization message
     printf("ESP32-S3 Game Engine Initialized!\n");
 
-    map_level = build_map();
-
-    agent_generation = allocate_agent_array(GENERATION_SIZE);
-    init_agent_array(agent_generation, GENERATION_SIZE);
-
-    simulate_agent_generation(agent_generation, map_level, 0);
 
 
 
-    print_agent(&agent_generation[0]);
-    print_byte_array(map_level, MAP_SIZE);
 
-    natural_selection(agent_generation, map_level);
-    print_agent(&agent_generation[0]);
+
+    for(int i = 0; i < CHAMPION_ARRAY_SIZE; i++){
+        map_level = build_map();
+        init_agent_array(agent_generation, GENERATION_SIZE);
+        simulate_agent_generation(agent_generation, map_level, 0);
+        natural_selection(agent_generation, map_level);
+        copy_agent_param(&agent_generation[0], &champion_agent_array[i]);
+        printf("Finished Training Agent #%d!\n", i);
+    }
+
 
  
     // Infinite loop to keep the task alive
     while (1)
     {
+        //debug print will remove later.
+        if(current_champion_running_flag == 0){
+            printf("Current agent running is agent #%d.\n\n", champion_index);
+            print_agent(&champion_agent_array[champion_index]);
+            current_champion_running_flag = 1;
+        }
+
         //game tiles are obst width for simplicity.
         map_index = camera_x / OBSTACLE_WIDTH;
         map_offset = camera_x % OBSTACLE_WIDTH;
@@ -74,13 +87,13 @@ void app_main(void)
         fill_screen_black(back_buffer);
         draw_road(back_buffer);
 
-        draw_visible_obstacles(map_index, map_offset, y_start_pos, map_level, back_buffer);
+        draw_visible_obstacles(map_index, map_offset, y_start_pos, champion_agent_array[champion_index].map, back_buffer);
 
-        agent_jump(&agent_generation[0], &y_velocity, character_map_index, &character_y_axis);
+        agent_jump(&champion_agent_array[champion_index], &y_velocity, character_map_index, &character_y_axis);
 
         draw_circle(back_buffer, CIRCLE_CHARACTER_X_AXIS, character_y_axis, CIRCLE_CHARACTER_RADIUS);
 
-        check_collision(character_global_x,character_y_axis, map_level, &agent_generation[0].is_dead);
+        check_collision(character_global_x,character_y_axis, champion_agent_array[champion_index].map, &champion_agent_array[champion_index].is_dead);
 
         temp_buffer = front_buffer;
         front_buffer = back_buffer;
@@ -90,8 +103,21 @@ void app_main(void)
         
         camera_x += MOVE_RATE;
         // check_game_over may reset camera_x to 0, so the increment must come first
-        check_game_over(map_index, &character_y_axis, &agent_generation[0].is_dead, &y_velocity , &camera_x, panel_handle, back_buffer);
+        check_game_over(map_index, &character_y_axis, &champion_agent_array[champion_index].is_dead, &y_velocity , &camera_x, panel_handle, back_buffer, &champion_index);
 
+        //debug section will remove later.
+        if(champion_prev_index == champion_index - 1){
+            printf("Champion #%d Finished Run!\n", champion_prev_index);
+            if(champion_index == 9){
+                champion_prev_index = -1;
+            }
+            else{
+                champion_prev_index = champion_index;
+            }
+            print_agent(&champion_agent_array[champion_index]);
+            printf("\n");
+            current_champion_running_flag = 0;
+        }
     }
 }
 

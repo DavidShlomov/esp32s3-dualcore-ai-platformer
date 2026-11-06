@@ -1,4 +1,6 @@
 #include "lcd_setup.h"
+#include "configs.h"
+
 esp_lcd_panel_handle_t lcd_setup_main(esp_lcd_panel_io_color_trans_done_cb_t my_callback, void *user_ctx)
 {
     spi_bus_config_t screen = {0};
@@ -29,12 +31,15 @@ esp_lcd_panel_handle_t lcd_setup_main(esp_lcd_panel_io_color_trans_done_cb_t my_
 
 void screen_config(spi_bus_config_t *screen)
 {
+    int byte_per_pixle = 2;
+    int overhead = 8;
+
     screen->mosi_io_num = 15;
     screen->sclk_io_num = 16;
     screen->miso_io_num = -1;
     screen->quadhd_io_num = -1;
     screen->quadwp_io_num = -1;
-    screen->max_transfer_sz = 320 * 240 * 2 + 8;
+    screen->max_transfer_sz = SCREEN_WIDTH * SCREEN_HEIGHT * byte_per_pixle + overhead;
 }
 
 void io_spi_config(esp_lcd_panel_io_spi_config_t *io_config, esp_lcd_panel_io_color_trans_done_cb_t my_callback, void *user_ctx)
@@ -60,7 +65,8 @@ void panel_config(esp_lcd_panel_dev_config_t *panel_dev)
 void black_screen(esp_lcd_panel_handle_t panel_handle)
 {
     int chunk_lines = 10;
-    uint16_t *color_buffer = (uint16_t *)malloc(340 * chunk_lines * sizeof(uint16_t));
+    int dma_delay = 20;
+    uint16_t *color_buffer = (uint16_t *)malloc(SCREEN_WIDTH * chunk_lines * sizeof(uint16_t));
 
     if(color_buffer == NULL){
         fprintf(stderr, "Error: color_buffer memory allocation failed.\n");
@@ -68,15 +74,17 @@ void black_screen(esp_lcd_panel_handle_t panel_handle)
     }
 
     // fill small buffer with white color.
-    for (int i = 0; i < 340 * chunk_lines; i++)
+    for (int i = 0; i < SCREEN_WIDTH * chunk_lines; i++)
     {
-        color_buffer[i] = 0x0000;
+        color_buffer[i] = BLACK_COLOR;
     }
-    // send the chunk to the screenmultiple times to cover whole screen.
-    for (int j = 0; j < 320; j += chunk_lines)
+    // send the chunk to the screen multiple times to cover whole screen.
+    for (int j = 0; j < SCREEN_HEIGHT; j += chunk_lines)
     {
-        esp_lcd_panel_draw_bitmap(panel_handle, 0, j, 340, j + chunk_lines, color_buffer);
+        esp_lcd_panel_draw_bitmap(panel_handle, 0, j, SCREEN_WIDTH, j + chunk_lines, color_buffer);
     }
 
+    //small delay to let dma transfer complete.
+    vTaskDelay(dma_delay/portTICK_PERIOD_MS);
     free(color_buffer);
 }

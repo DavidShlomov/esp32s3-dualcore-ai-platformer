@@ -10,6 +10,9 @@
 uint8_t *build_map()
 {
     uint8_t *map_array = calloc(MAP_SIZE, sizeof(uint8_t));
+    int min_obstacle_size = 40;
+    int obstacle_size_range = 90;
+    int tiles_between_obstacles = 3;
 
     if(map_array == NULL){
         ESP_LOGE("MEM_TEST", "Fatal Error: map_array memory allocation failed.\n");
@@ -20,8 +23,8 @@ uint8_t *build_map()
     {
         if (get_random_num() % 2 == 0)
         {
-            map_array[i] = get_random_num() % 90 + 40;
-            i += 3;
+            map_array[i] = get_random_num() % obstacle_size_range + min_obstacle_size;
+            i += tiles_between_obstacles;
         }
     }
 
@@ -69,6 +72,9 @@ bool check_collision(int character_global_x, int character_y_axis, const uint8_t
 //Agent jumping logic need to callibrate numbers later.
 void agent_jump(const Agent *agent, int *y_velocity, int dna_array_index, int *agent_y_axis){
     int gravity = 1;
+    int low_jump = 16;
+    int medium_jump = 18;
+    int high_jump = 20;
 
     if(dna_array_index >= DNA_SIZE){
         printf("dna_array_index is out of bound.\n");
@@ -78,14 +84,14 @@ void agent_jump(const Agent *agent, int *y_velocity, int dna_array_index, int *a
     if(*y_velocity == 0 && *agent_y_axis == CIRCLE_CHARACTER_INITIAL_Y){
         switch (agent->dna[dna_array_index])
         {
-            case LOW:
-                *y_velocity = 16;
+            case JUMP_LOW:
+                *y_velocity = low_jump;
                 break;
-            case MEDIUM:
-                *y_velocity = 18;
+            case JUMP_MEDIUM:
+                *y_velocity = medium_jump;
                 break;
-            case HIGH:
-                *y_velocity = 20;
+            case JUMP_HIGH:
+                *y_velocity = high_jump;
                 break;
             default:
                 break;
@@ -103,6 +109,9 @@ void agent_jump(const Agent *agent, int *y_velocity, int dna_array_index, int *a
 
 
 void calculate_fitness(int *fitness, int agent_y_axis, int map_index, bool *above_obstacle, const uint8_t *curr_level, bool *received_map_pass_points){
+    int obstacle_pass_reward = 100;
+    int air_time_fine = 1;
+    int level_pass_reward = 1000;
 
     //agent is above an obstacle.
     if(agent_y_axis > CIRCLE_CHARACTER_INITIAL_Y && curr_level[map_index] > 0){
@@ -110,16 +119,16 @@ void calculate_fitness(int *fitness, int agent_y_axis, int map_index, bool *abov
     }
     //agent passed obstacle successfully.
     if(*above_obstacle && agent_y_axis == CIRCLE_CHARACTER_INITIAL_Y){
-        *fitness += 100;
+        *fitness += obstacle_pass_reward;
         *above_obstacle = false;
     }
     //airtime fitmess is -1.
     if(agent_y_axis > CIRCLE_CHARACTER_INITIAL_Y){
-        *fitness -= 1;
+        *fitness -= air_time_fine;
     }
     //last tile guranteed with no obstacle, map is passed, not getting multiple level passing points.
     if(map_index == MAP_SIZE - 1 && !*received_map_pass_points){
-        *fitness += 1000;
+        *fitness += level_pass_reward;
         *received_map_pass_points = true;
     }
 }

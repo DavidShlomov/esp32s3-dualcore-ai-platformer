@@ -39,10 +39,11 @@ void draw_visible_obstacles(int map_index, int map_offset, int y_start_pos ,cons
 /// @param y_velocity Y velocity of the jump, gets rewritten.
 /// @param camera_x X position of the current screen frame.
 /// @param panel_handle Screen panel handle.
-/// @param buffer to draw end screen on, Has to be SCREEN_SIZE.
+/// @param buffer To draw end screen on, Has to be SCREEN_SIZE.
+/// @param champion_index The current champion index to move forward to next.
 /// @note If game over, blocks 500ms then calls show_level_end_screen() which blocks a further 3 seconds.
 /// @note Rewrite happen in  reset_game_over_stats().
-void check_game_over(int map_index, int *character_y_axis, bool *is_dead, int *y_velocity, int *camera_x, esp_lcd_panel_handle_t panel_handle, uint16_t *buffer);
+void check_game_over(int map_index, int *character_y_axis, bool *is_dead, int *y_velocity, int *camera_x, esp_lcd_panel_handle_t panel_handle, uint16_t *buffer, int *champion_index);
 
 /// @brief Draws the road into the screen's PSRAM buffer.
 /// @param screen_buffer Screen PSRAM array, must point to a buffer of at least SCREEN_SIZE uint16_t elements.

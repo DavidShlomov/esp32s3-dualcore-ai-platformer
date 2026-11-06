@@ -87,3 +87,9 @@ Agent *allocate_champion_array(int array_size);
 /// @param agent_generation Agent generation to reset.
 /// @param generation_index_start Index in which to start the reset of the current generation.
 void generation_reset(Agent *agent_generation, int generation_index_start);
+
+/// @brief Copies agent parameters from one agent to another. 
+/// @param source Agent to copy from.
+/// @param destination Agent to copy to.
+/// @note Since map is a pointer param, destination points to map and source pointer changed to NULL, for safer array management.
+void copy_agent_param(Agent *source, Agent *destination);
