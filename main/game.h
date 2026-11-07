@@ -7,9 +7,8 @@
 
 
 /// @brief Generates a random obstacle map, where each byte represents an obstacle's height (0 = no obstacle).
-/// @return Pointer to a heap-allocated array of MAP_SIZE uint8_t elements.
-/// @note Caller takes ownership of the returned array and is responsible for freeing it.
-uint8_t *build_map(void);
+/// @param map_array array of size MAP_SIZE.
+void build_map(uint8_t *map_array);
 
 /// @brief Checks if the character has collided with an obstacle.
 /// @param character_global_x Character location on the global map.

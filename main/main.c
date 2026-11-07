@@ -23,7 +23,7 @@ void app_main(void)
     int map_offset = 0;
     int y_velocity = 0;
     int camera_x = 0;
-    uint8_t *map_level;
+    uint8_t map_array[MAP_SIZE] = {0};
     Agent *agent_generation = NULL;
     Agent *champion_agent_array = NULL;//TODO: later add a champion array sized 10.
     int champion_index = 0;
@@ -50,10 +50,10 @@ void app_main(void)
 
 
     for(int i = 0; i < CHAMPION_ARRAY_SIZE; i++){
-        map_level = build_map();
+        build_map(map_array);
         init_agent_array(agent_generation, GENERATION_SIZE);
-        simulate_agent_generation(agent_generation, map_level, 0);
-        natural_selection(agent_generation, map_level);
+        simulate_agent_generation(agent_generation, map_array, 0);
+        natural_selection(agent_generation, map_array);
         copy_agent_param(&agent_generation[0], &champion_agent_array[i]);
         printf("Finished Training Agent #%d!\n", i);
     }

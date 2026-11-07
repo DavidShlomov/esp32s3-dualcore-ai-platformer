@@ -119,13 +119,12 @@ void natural_selection(Agent *agent_generation, uint8_t *map_level){
             vTaskDelay(1);//breathing room for watchdog timeout.
         }
 
+        memcpy(agent_generation->map, map_level, MAP_SIZE * sizeof(uint8_t));
         qsort(agent_generation, GENERATION_SIZE, sizeof(Agent), compare_fitness);
     }
     //resseting in case that best agent did not pass level for first run.
     // agent_generation -> is_dead = false;
 
-    //best agent keeps the map.
-    agent_generation -> map = map_level;
     print_agent(&agent_generation[0]);
 }
 
@@ -190,11 +189,9 @@ void mutation(uint8_t *child_dna, float mutation_rate_percent){
 
 //initiate an agent with random dna.
 void init_agent(Agent *new_agent){
-    new_agent->distance = 0;
-    new_agent->fitness = 0;
+    *new_agent = (Agent){0};
     new_agent->is_dead = false;
     randomize_agent_dna(new_agent);
-    new_agent->map = NULL;
 }
 
 //4 options: 0 = no jump, 1 = low, 2 = medium, 3 = high.
@@ -213,12 +210,9 @@ void print_agent(const Agent *agent){
     printf("Agent dna is: \n");
     print_byte_array(agent->dna, DNA_SIZE);
     printf("\n");
-
-    if(agent -> map != NULL){
-        printf("agent map is: ");
-        print_byte_array(agent->map, MAP_SIZE);
-        printf("\n");
-    }
+    printf("agent map is: ");
+    print_byte_array(agent->map, MAP_SIZE);
+    printf("\n");
 }
 
 Agent *allocate_agent_array(int array_size){
@@ -270,7 +264,6 @@ void copy_agent_param(Agent *source, Agent *destination){
     destination -> distance = source -> distance;
     destination -> fitness = source -> fitness;
     destination -> is_dead = source -> is_dead;
-    destination -> map = source -> map;
-    source -> map = NULL; //preventing 2 different agents having the same map pointer.
     memcpy(destination -> dna, source -> dna, DNA_SIZE * sizeof(uint8_t)); 
+    memcpy(destination -> map, source -> map, MAP_SIZE * sizeof(uint8_t));
 }

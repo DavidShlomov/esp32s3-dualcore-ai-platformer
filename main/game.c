@@ -7,17 +7,15 @@
 
 
 //generate random map array.
-uint8_t *build_map()
+void build_map(uint8_t *map_array)
 {
-    uint8_t *map_array = calloc(MAP_SIZE, sizeof(uint8_t));
     int min_obstacle_size = 40;
     int obstacle_size_range = 90;
     int tiles_between_obstacles = 3;
 
-    if(map_array == NULL){
-        ESP_LOGE("MEM_TEST", "Fatal Error: map_array memory allocation failed.\n");
-        abort();
-    }
+    //resetting the array values from last map.
+    memset(map_array, 0, MAP_SIZE * sizeof(uint8_t));
+
     //starting with 12 empty cells, at least 2 last tiles empty.
     for (int i = NUM_OF_TILES_IN_SCREEN; i < MAP_SIZE - 2; i++)
     {
@@ -28,7 +26,6 @@ uint8_t *build_map()
         }
     }
 
-    return map_array;
 }
 
 

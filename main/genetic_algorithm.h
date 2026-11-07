@@ -10,7 +10,7 @@ typedef struct
     int fitness; // The score of the agent hit an obstacle.
     bool is_dead; // True if agent hit an obstacle. 
     int distance; // How many tiles the agent successfully passed.
-    uint8_t *map;// The map that the agent successfully passed, assigned only on the champion.
+    uint8_t map[MAP_SIZE];// The map that the agent successfully passed, assigned only on the champion.
 }Agent;
 
 
