@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "esp_log.h"
-
+#include <string.h>
 
 //generate random map array.
 void build_map(uint8_t *map_array)

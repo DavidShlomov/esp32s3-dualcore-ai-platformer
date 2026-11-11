@@ -6,7 +6,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_log.h"
-
+#include <string.h>
 
 //Headless simulator for agent training without rendering to screen.
 //Supposed to run a single agent until it dies or passes. 
