@@ -12,3 +12,8 @@ sdkconfig.old
 *.elf
 *.bin
 *.map
+
+# Host benchmark: compiled binary and run results
+host_bench/bench
+before.txt
+after.txt

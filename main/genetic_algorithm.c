@@ -6,7 +6,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_log.h"
-
+#include <string.h>
 
 //Headless simulator for agent training without rendering to screen.
 //Supposed to run a single agent until it dies or passes. 
@@ -55,7 +55,14 @@ int compare_fitness(const void *agent_a, const void *agent_b){
     return fitness_b - fitness_a;
 }
 
-void natural_selection(Agent *agent_generation, uint8_t *map_level){
+static void record_first_pass(const Agent *best_agent, TrainingStats *training_stats, int *fitness_at_first_pass, int generation_num){
+    if(training_stats->first_generation_pass == -1 && best_agent->distance == MAP_SIZE && !best_agent->is_dead){
+        training_stats->first_generation_pass = generation_num;
+        *fitness_at_first_pass = best_agent->fitness;
+    }
+}
+
+TrainingStats natural_selection(Agent *agent_generation, uint8_t *map_level){
     int generation_num = 0;
     int best_distance = 0;
     int local_optimum_check = 0;
@@ -70,9 +77,14 @@ void natural_selection(Agent *agent_generation, uint8_t *map_level){
     uint8_t *parent_a;
     uint8_t *parent_b;
     uint8_t *child_to_evolve;
+    TrainingStats training_stats = { .first_generation_pass = -1, .fitness_diff = -1};
+    int fitness_at_first_pass = 0;
+
 
     //initial sorting if agent gen was not sorted.
     qsort(agent_generation, GENERATION_SIZE, sizeof(Agent), compare_fitness);
+    record_first_pass( &agent_generation[0], &training_stats, &fitness_at_first_pass, generation_num);
+
 
     //above good fitness result, or max the number of generations met to shorten learning time.
     while( !(agent_generation -> fitness > fitnnes_cutoff) && generation_num < NUM_OF_GENERATIONS){
@@ -119,13 +131,25 @@ void natural_selection(Agent *agent_generation, uint8_t *map_level){
             vTaskDelay(1);//breathing room for watchdog timeout.
         }
 
-        memcpy(agent_generation->map, map_level, MAP_SIZE * sizeof(uint8_t));
         qsort(agent_generation, GENERATION_SIZE, sizeof(Agent), compare_fitness);
+        
+        record_first_pass( &agent_generation[0], &training_stats, &fitness_at_first_pass, generation_num);
+        
     }
     //resseting in case that best agent did not pass level for first run.
     // agent_generation -> is_dead = false;
 
+    memcpy(agent_generation->map, map_level, MAP_SIZE * sizeof(uint8_t));
+
     print_agent(&agent_generation[0]);
+    training_stats.total_num_of_generations = generation_num;
+    
+    //the agent had a passing generation.
+    if(training_stats.first_generation_pass != -1){
+        training_stats.fitness_diff = agent_generation->fitness - fitness_at_first_pass;
+    }
+
+    return training_stats;
 }
 
 void double_cross_over(uint8_t *parent_a_dna, uint8_t *parent_b_dna, uint8_t *child_dna){
