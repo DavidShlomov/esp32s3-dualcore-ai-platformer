@@ -1,6 +1,8 @@
 import subprocess
 import argparse
 import sys
+from concurrent.futures import ThreadPoolExecutor
+import os
 
 
 def run_seed(seed):
@@ -25,19 +27,25 @@ def run_seed(seed):
 
 parser = argparse.ArgumentParser(description="Receive a number n from user and run seeds 1...n, outputs run summary.")
 parser.add_argument("-s", "--seeds", type=int, default=20, help="number of seeds to run, starting from seed 1 (default: %(default)s)", metavar="N")
+parser.add_argument("-j", "--jobs", type=int, default=os.cpu_count(), help="number of threads to run (default: %(default)s)")
 args = parser.parse_args()
 if args.seeds < 1:
     parser.error("--seeds must be at least 1")
 
-runs = []
-for i in range(1, args.seeds + 1):
-    fields = run_seed(i)
+if args.jobs < 1:
+    parser.error("--jobs must be at least 1")
 
-    if fields is None:
-        print(f"No fields in seed {i}")
+with ThreadPoolExecutor(max_workers=args.jobs) as pool:
+    results = list(pool.map(run_seed, range(1, args.seeds + 1)))
+
+runs = []
+
+for index, result in enumerate(results, start=1):
+    if result is None:
+        print(f"No fields in seed {index}")
     else:
-        print(f"seed: {fields['seed']}\tfitness: {fields['fitness']}\tDead: {fields['dead']}")
-        runs.append(fields)
+        runs.append(result)
+        print(f"seed: {result['seed']}\tfitness: {result['fitness']}\tDead: {result['dead']}")
 
 num_of_seeds = len(runs)
 num_of_failed = 0
